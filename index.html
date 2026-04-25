@@ -659,7 +659,7 @@ const PHRASES = {
     { text: '清明連假', action: 'relaxed family vibe with holiday mood' },
   ]},
   taiwanese: { name: '台式口語', icon: '🇹🇼', items: [
-    { text: '蛤？', action: 'tilting head sideways, dialect-style confused face' },
+    { text: '蛤啊', action: 'tilting head sideways, dialect-style confused face' },
     { text: '走啦', action: 'tugging arm with eager smile, urging gesture' },
     { text: '走囉', action: 'waving while walking away, casual smile' },
     { text: '安啦', action: 'patting back reassuringly, chill confident smile' },
@@ -699,7 +699,7 @@ const PHRASES = {
     { text: '喜歡你', action: 'blushing with hand on heart, shy admission' },
     { text: '愛你呦', action: 'making finger heart with sparkles around' },
     { text: '我的人', action: 'pointing at someone possessively cute' },
-    { text: '想你了', action: 'holding photo dreamy with floating hearts' },
+    { text: '我想你', action: 'holding photo dreamy with floating hearts' },
     { text: '約嗎', action: 'hand wave invitation cheerful' },
     { text: '看電影', action: 'holding popcorn and tickets excited' },
     { text: '吃飯嗎', action: 'holding chopsticks with inviting smile' },
@@ -736,7 +736,7 @@ const PHRASES = {
     { text: '飽了', action: 'patting belly satisfied' },
     { text: '撐死', action: 'lying down too full, food coma' },
     { text: '喝一杯', action: 'holding glass cheers gesture' },
-    { text: '乾杯', action: 'clinking glasses with celebration' },
+    { text: '碰杯', action: 'clinking glasses with celebration' },
     { text: '想喝', action: 'eyeing drink longingly' },
     { text: '出去玩', action: 'jumping with bag excited' },
     { text: '旅行', action: 'holding suitcase ready to go' },
@@ -761,7 +761,7 @@ const PHRASES = {
   ]},
   parenting: { name: '育兒親子', icon: '👶', items: [
     { text: '寶寶', action: 'cradling baby with loving smile' },
-    { text: '乖乖', action: 'patting head gently with smile' },
+    { text: '乖點', action: 'patting head gently with smile' },
     { text: '不要鬧', action: 'finger to lips calming gesture' },
     { text: '午睡', action: 'lying with pillow eyes closed peaceful' },
     { text: '想睡了', action: 'rubbing eyes sleepy' },
@@ -797,7 +797,7 @@ const PHRASES = {
     { text: '太香了', action: 'sniffing with hearts and sparkles' },
     { text: '爆乾', action: 'cracking up dramatically belly laugh' },
     { text: '太可了', action: 'thumbs up super approving' },
-    { text: '我的天', action: 'hands on cheeks dramatic shock' },
+    { text: '我的天啊', action: 'hands on cheeks dramatic shock' },
     { text: '真香', action: 'eating with delight despite previous protest' },
     { text: '吃瓜', action: 'holding watermelon spectator pose' },
     { text: '八卦', action: 'whispering hand to mouth gossip' },
@@ -1364,8 +1364,12 @@ function generate() {
   const charDesc = $('charDesc').value;
   // 收集所有句子（保留原本順序：先勾選的 → 自訂的）
   const selectedItems = [];
+  const seenTexts = new Set();
   Object.values(PHRASES).forEach(cat => cat.items.forEach(i => {
-    if (state.selected.has(i.text)) selectedItems.push({ text: i.text, action: i.action });
+    if (state.selected.has(i.text) && !seenTexts.has(i.text)) {
+      selectedItems.push({ text: i.text, action: i.action });
+      seenTexts.add(i.text);
+    }
   }));
   getCustomLines().forEach(t => selectedItems.push({ text: t, action: 'character expressing the meaning of the text naturally, fitting the overall sticker set tone' }));
 
