@@ -37,6 +37,15 @@
   .split-cell .cell-num { position: absolute; top: 0.25rem; left: 0.25rem; background: rgba(0,0,0,0.6); color: white; font-size: 0.7rem; padding: 0.1rem 0.4rem; border-radius: 0.25rem; }
   .split-cell .cell-dl { position: absolute; top: 0.25rem; right: 0.25rem; background: #10b981; color: white; font-size: 0.7rem; padding: 0.2rem 0.5rem; border-radius: 0.25rem; cursor: pointer; opacity: 0.9; }
   .split-cell .cell-dl:hover { opacity: 1; }
+  .photo-item { display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem; background: #f9fafb; border-radius: 0.5rem; border: 1px solid #e5e7eb; }
+  .photo-item img { width: 64px; height: 64px; object-fit: cover; border-radius: 0.375rem; flex-shrink: 0; }
+  .photo-item .photo-tag { flex: 1; min-width: 0; padding: 0.4rem 0.6rem; border: 1px solid #d1d5db; border-radius: 0.375rem; font-size: 0.85rem; }
+  .photo-item .photo-tag:focus { outline: none; border-color: #10b981; box-shadow: 0 0 0 1px #10b981; }
+  .photo-item .photo-num { font-size: 0.75rem; font-weight: 700; color: #6b7280; padding: 0.25rem 0.5rem; background: white; border-radius: 0.375rem; min-width: 1.75rem; text-align: center; }
+  .photo-item .photo-rm { padding: 0.25rem 0.5rem; background: #fee2e2; color: #dc2626; border-radius: 0.375rem; font-size: 0.75rem; cursor: pointer; }
+  .photo-item .photo-rm:hover { background: #fecaca; }
+  .tag-chip { font-size: 0.75rem; padding: 0.25rem 0.6rem; background: white; border: 1px solid #d1d5db; border-radius: 0.375rem; cursor: pointer; transition: all 0.1s; }
+  .tag-chip:hover { background: #d1fae5; border-color: #10b981; color: #047857; }
 </style>
 </head>
 <body class="bg-gradient-to-br from-green-50 via-blue-50 to-purple-50 min-h-screen pb-32">
@@ -65,20 +74,46 @@
 
   <!-- Step 1 -->
   <section class="bg-white rounded-2xl shadow-md p-5 md:p-6 mb-5">
-    <h2 class="text-lg md:text-xl font-bold mb-3">1️⃣ 上傳參考圖片</h2>
+    <h2 class="text-lg md:text-xl font-bold mb-3">1️⃣ 上傳參考照片（可多張）</h2>
+    <p class="text-sm text-gray-600 mb-3">
+      💡 <strong>建議上傳 3-10 張不同表情/姿勢的照片</strong>，AI 會依每個情緒挑最合適的當素材。例：笑、驚訝、害羞各拍一張 → 比只給一張效果好非常多，不會出現「假笑」「眼睛變白」這類臉部走樣問題。
+    </p>
     <div id="dropzone" class="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center hover:border-green-400 cursor-pointer transition bg-gray-50">
-      <input type="file" id="imageInput" accept="image/*" class="hidden">
+      <input type="file" id="imageInput" accept="image/*" multiple class="hidden">
       <div id="uploadHint">
         <div class="text-5xl mb-2">📁</div>
-        <p class="font-medium">點擊或拖曳圖片到這裡</p>
-        <p class="text-sm text-gray-500 mt-1">支援 JPG / PNG，建議單一角色清晰圖（圖片不會上傳，只會在你瀏覽器內顯示）</p>
+        <p class="font-medium">點擊或拖曳照片到這裡（可一次選多張）</p>
+        <p class="text-sm text-gray-500 mt-1">支援 JPG / PNG，最多 10 張。圖片不會上傳，只在瀏覽器內處理。</p>
       </div>
-      <img id="preview" class="hidden max-h-72 mx-auto rounded-lg shadow" />
     </div>
+
+    <!-- Photo List -->
+    <div id="photoList" class="hidden mt-4 space-y-2"></div>
+
+    <!-- Tag suggestions -->
+    <div id="tagHints" class="hidden mt-3 p-3 bg-gray-50 rounded-lg">
+      <span class="text-xs text-gray-600 font-medium">💡 標籤建議（點下面關鍵字 → 寫進有焦點的標籤輸入框）：</span>
+      <div class="flex flex-wrap gap-1 mt-2">
+        <button class="tag-chip" data-tag="笑 / 開心">笑 / 開心</button>
+        <button class="tag-chip" data-tag="驚訝 / 傻眼">驚訝 / 傻眼</button>
+        <button class="tag-chip" data-tag="害羞">害羞</button>
+        <button class="tag-chip" data-tag="生氣">生氣</button>
+        <button class="tag-chip" data-tag="哭哭 / 難過">哭哭 / 難過</button>
+        <button class="tag-chip" data-tag="撒嬌 / 賣萌">撒嬌 / 賣萌</button>
+        <button class="tag-chip" data-tag="無奈 / 嘆氣">無奈 / 嘆氣</button>
+        <button class="tag-chip" data-tag="揮手 / 打招呼">揮手 / 打招呼</button>
+        <button class="tag-chip" data-tag="抱抱">抱抱</button>
+        <button class="tag-chip" data-tag="思考">思考</button>
+        <button class="tag-chip" data-tag="睡覺 / 累">睡覺 / 累</button>
+        <button class="tag-chip" data-tag="比讚 / 加油">比讚 / 加油</button>
+        <button class="tag-chip" data-tag="中性">中性</button>
+      </div>
+    </div>
+
     <div class="mt-4">
       <label class="text-sm font-medium text-gray-700">補充角色描述（選填）</label>
-      <textarea id="charDesc" rows="2" placeholder="例：白色柴犬，戴紅色領巾，圓滾滾的眼睛，扁平 Q 版插畫風" class="w-full mt-1 p-3 border border-gray-300 rounded-lg focus:border-green-400 focus:ring-1 focus:ring-green-400 outline-none"></textarea>
-      <p class="text-xs text-gray-500 mt-1">不打也可以，AI 會自己看圖。打了會更精準（特別是顏色、配件、髮型這些細節）</p>
+      <textarea id="charDesc" rows="2" placeholder="例：媽媽短髮、爸爸戴黑框眼鏡、哥哥 3 歲、寶寶滿月" class="w-full mt-1 p-3 border border-gray-300 rounded-lg focus:border-green-400 focus:ring-1 focus:ring-green-400 outline-none"></textarea>
+      <p class="text-xs text-gray-500 mt-1">幫 GPT 認人用：每個成員的特徵描述。不打也可以。</p>
     </div>
   </section>
 
@@ -467,10 +502,12 @@ const state = {
   targetCount: 16,
   currentTab: 'greeting',
   selected: new Set(),
-  imageDataUrl: null,
+  photos: [], // [{ id, dataUrl, tag }]
   selectedStyle: 'photo',
   outputMode: 'batch',
+  focusedPhotoId: null,
 };
+let _photoIdCounter = 0;
 
 // ============================================================
 // DOM
@@ -561,8 +598,6 @@ function getCustomLines() {
 function setupUpload() {
   const dz = $('dropzone');
   const input = $('imageInput');
-  const preview = $('preview');
-  const hint = $('uploadHint');
 
   dz.onclick = () => input.click();
   dz.ondragover = e => { e.preventDefault(); dz.classList.add('border-green-400', 'bg-green-50'); };
@@ -570,22 +605,78 @@ function setupUpload() {
   dz.ondrop = e => {
     e.preventDefault();
     dz.classList.remove('border-green-400', 'bg-green-50');
-    const f = e.dataTransfer.files[0];
-    if (f) handleFile(f);
+    handleFiles(e.dataTransfer.files);
   };
-  input.onchange = () => input.files[0] && handleFile(input.files[0]);
+  input.onchange = () => handleFiles(input.files);
 
-  function handleFile(file) {
-    if (!file.type.startsWith('image/')) { toast('請上傳圖片檔'); return; }
-    const reader = new FileReader();
-    reader.onload = e => {
-      state.imageDataUrl = e.target.result;
-      preview.src = state.imageDataUrl;
-      preview.classList.remove('hidden');
-      hint.classList.add('hidden');
-    };
-    reader.readAsDataURL(file);
+  function handleFiles(fileList) {
+    const files = Array.from(fileList).filter(f => f.type.startsWith('image/'));
+    if (!files.length) return;
+    const remaining = 10 - state.photos.length;
+    if (remaining <= 0) { toast('最多 10 張，先刪掉一些再加'); return; }
+    const toAdd = files.slice(0, remaining);
+    if (files.length > remaining) toast(`只能再加 ${remaining} 張，超過的略過`);
+    toAdd.forEach(f => {
+      const reader = new FileReader();
+      reader.onload = e => {
+        state.photos.push({ id: ++_photoIdCounter, dataUrl: e.target.result, tag: '' });
+        renderPhotoList();
+      };
+      reader.readAsDataURL(f);
+    });
   }
+
+  // Tag suggestion chips → write into focused tag input
+  document.querySelectorAll('.tag-chip').forEach(chip => {
+    chip.onclick = () => {
+      if (!state.focusedPhotoId) { toast('請先點任一張照片的標籤輸入框'); return; }
+      const p = state.photos.find(x => x.id === state.focusedPhotoId);
+      if (!p) return;
+      p.tag = chip.dataset.tag;
+      renderPhotoList();
+      // Re-focus the same tag input
+      setTimeout(() => {
+        const el = document.querySelector(`.photo-tag[data-photo-id="${p.id}"]`);
+        if (el) el.focus();
+      }, 0);
+    };
+  });
+}
+
+function renderPhotoList() {
+  const list = $('photoList');
+  const tagHints = $('tagHints');
+  list.innerHTML = '';
+  if (state.photos.length === 0) {
+    list.classList.add('hidden');
+    tagHints.classList.add('hidden');
+    return;
+  }
+  list.classList.remove('hidden');
+  tagHints.classList.remove('hidden');
+
+  state.photos.forEach((p, idx) => {
+    const item = document.createElement('div');
+    item.className = 'photo-item';
+    item.innerHTML = `
+      <span class="photo-num">#${idx + 1}</span>
+      <img src="${p.dataUrl}" alt="photo-${idx + 1}">
+      <input class="photo-tag" data-photo-id="${p.id}" type="text" placeholder="標籤（選填）：例 笑、驚訝、害羞" value="${escapeAttr(p.tag)}">
+      <span class="photo-rm" data-photo-id="${p.id}">移除</span>
+    `;
+    const tagInput = item.querySelector('.photo-tag');
+    tagInput.oninput = () => { p.tag = tagInput.value; };
+    tagInput.onfocus = () => { state.focusedPhotoId = p.id; };
+    item.querySelector('.photo-rm').onclick = () => {
+      state.photos = state.photos.filter(x => x.id !== p.id);
+      renderPhotoList();
+    };
+    list.appendChild(item);
+  });
+}
+
+function escapeAttr(s) {
+  return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 }
 
 // ============================================================
@@ -753,9 +844,27 @@ function fontBlock(styleId, text, isMain, isTab) {
   return `Text: Display the text "${text}" exactly as written. Style: ${fonts[styleId]} Position the text where it does NOT block any face.`;
 }
 
-function buildBatchPrompt({ phrases, charDesc, styleId, batchIndex, batchTotal }) {
+function photoSetBlock(photos) {
+  const n = photos.length;
+  if (n === 0) return null;
+  if (n === 1) return `Reference photo: 1 attached.`;
+  const lines = photos.map((p, i) => `  Photo #${i + 1}${p.tag ? ` — tagged "${p.tag}"` : ''}`);
+  const tagged = photos.filter(p => p.tag).length;
+  const guideLine = tagged > 0
+    ? `For each cell/sticker, PICK the photo from this set that best matches the cell's mood. If a cell's emotion matches a photo's tag (e.g. cell mood is "shy / blushing" → use the photo tagged "害羞"), strongly prefer that tagged photo.`
+    : `For each cell/sticker, PICK the photo from this set that best matches the cell's mood.`;
+  return [
+    `Reference photo SET: ${n} photos attached.`,
+    ...lines,
+    guideLine,
+    `Use ONE photo per cell — the most fitting one. Use the actual face from that chosen photo verbatim, never blend faces from multiple photos in one sticker.`,
+  ].join('\n');
+}
+
+function buildBatchPrompt({ phrases, photos, charDesc, styleId, batchIndex, batchTotal }) {
   const desc = charDesc.trim();
-  const charLine = desc ? `Reference subject details: ${desc}.` : null;
+  const charLine = desc ? `Subject details: ${desc}.` : null;
+  const photoSet = photoSetBlock(photos);
   const isPhoto = styleId === 'photo';
 
   const cellLines = phrases.map((p, i) => {
@@ -782,6 +891,8 @@ function buildBatchPrompt({ phrases, charDesc, styleId, batchIndex, batchTotal }
   return [
     `Generate ONE single wide-format image (approximately 2:1 horizontal aspect ratio, e.g. 1600x800px) containing 8 LINE stickers arranged in a 4-COLUMN x 2-ROW grid (4 wide, 2 tall).${batchTotal > 1 ? ` This is BATCH ${batchIndex} of ${batchTotal}.` : ''}`,
     ``,
+    photoSet,
+    photoSet ? `` : null,
     `CANVAS LAYOUT:`,
     `- 8 EQUAL-SIZED cells, each one independent LINE sticker (~370:320 sticker proportion).`,
     `- Cell positions:`,
@@ -815,9 +926,10 @@ function getCellPos(n) {
   return positions[n - 1] || `position ${n}`;
 }
 
-function buildPrompt({ text, action, isMain, isTab, charDesc, styleId }) {
+function buildPrompt({ text, action, isMain, isTab, charDesc, styleId, photos }) {
   const desc = charDesc.trim();
-  const charLine = desc ? `Reference subject details: ${desc}.` : null;
+  const charLine = desc ? `Subject details: ${desc}.` : null;
+  const photoSet = photos && photos.length > 1 ? photoSetBlock(photos) : null;
   const isPhoto = styleId === 'photo';
 
   if (isMain) {
@@ -825,8 +937,11 @@ function buildPrompt({ text, action, isMain, isTab, charDesc, styleId }) {
       ? `Composition: Use a friendly group shot or main subject from the source photo as the cover. Keep the photo authentic.`
       : `Pose: Signature welcoming pose representing the whole set, looking toward viewer with friendly inviting smile.`;
     return [
-      `Generate a LINE sticker MAIN COVER IMAGE based on the attached reference image.`,
+      `Generate a LINE sticker MAIN COVER IMAGE based on the attached reference image${photos && photos.length > 1 ? '(s)' : ''}.`,
       ``,
+      photoSet,
+      photoSet ? `For the main cover, prefer a friendly smiling photo from the set.` : null,
+      photoSet ? `` : null,
       styleBlock(styleId),
       charLine,
       ``,
@@ -847,8 +962,11 @@ function buildPrompt({ text, action, isMain, isTab, charDesc, styleId }) {
       ? `Composition: A close-up of one subject's face/head from the source photo, cleanly cut out.`
       : `Pose: Simple front-facing portrait, neutral happy expression, simplified for tiny size.`;
     return [
-      `Generate a LINE sticker CHAT TAB ICON based on the attached reference image.`,
+      `Generate a LINE sticker CHAT TAB ICON based on the attached reference image${photos && photos.length > 1 ? '(s)' : ''}.`,
       ``,
+      photoSet,
+      photoSet ? `For the tab icon, pick the clearest face photo from the set.` : null,
+      photoSet ? `` : null,
       styleBlock(styleId),
       charLine,
       ``,
@@ -873,8 +991,11 @@ function buildPrompt({ text, action, isMain, isTab, charDesc, styleId }) {
     : null;
 
   return [
-    `Generate a LINE sticker based on the attached reference image.`,
+    `Generate a LINE sticker based on the attached reference image${photos && photos.length > 1 ? '(s)' : ''}.`,
     ``,
+    photoSet,
+    photoSet ? `For THIS sticker (mood: "${action}", text: "${text}"), pick the photo from the set whose tag/expression best matches the mood.` : null,
+    photoSet ? `` : null,
     styleBlock(styleId),
     charLine,
     ``,
@@ -896,7 +1017,7 @@ function buildPrompt({ text, action, isMain, isTab, charDesc, styleId }) {
 }
 
 function generate() {
-  if (!state.imageDataUrl) { toast('請先上傳參考圖片'); return; }
+  if (state.photos.length === 0) { toast('請先上傳至少一張參考照片'); return; }
 
   const charDesc = $('charDesc').value;
   // 收集所有句子（保留原本順序：先勾選的 → 自訂的）
@@ -916,6 +1037,7 @@ function generate() {
 
   // 建構結果：依 outputMode 分流
   const styleId = state.selectedStyle;
+  const photos = state.photos;
   const results = [];
 
   if (state.outputMode === 'batch') {
@@ -933,7 +1055,7 @@ function generate() {
       results.push({
         title: `🗂 批次 ${bIdx + 1} / ${batches.length}（4×2 grid，含 ${batch.length} 張）`,
         subtitle: cellSummary,
-        prompt: buildBatchPrompt({ phrases: filled, charDesc, styleId, batchIndex: bIdx + 1, batchTotal: batches.length }),
+        prompt: buildBatchPrompt({ phrases: filled, photos, charDesc, styleId, batchIndex: bIdx + 1, batchTotal: batches.length }),
       });
     });
   } else {
@@ -941,7 +1063,7 @@ function generate() {
       results.push({
         title: `第 ${idx + 1} 張：${p.text}`,
         subtitle: p.action,
-        prompt: buildPrompt({ text: p.text, action: p.action, charDesc, styleId }),
+        prompt: buildPrompt({ text: p.text, action: p.action, photos, charDesc, styleId }),
       });
     });
   }
@@ -949,12 +1071,12 @@ function generate() {
   results.push({
     title: '🟢 主圖(240×240)— LINE 上架必備',
     subtitle: 'Main cover image for LINE sticker store',
-    prompt: buildPrompt({ isMain: true, charDesc, styleId }),
+    prompt: buildPrompt({ isMain: true, photos, charDesc, styleId }),
   });
   results.push({
     title: '🔵 聊天標籤(96×74)— LINE 上架必備',
     subtitle: 'Chat tab icon shown in messaging app',
-    prompt: buildPrompt({ isTab: true, charDesc, styleId }),
+    prompt: buildPrompt({ isTab: true, photos, charDesc, styleId }),
   });
 
   renderResults(results);
