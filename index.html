@@ -390,14 +390,8 @@
   button[class*="bg-emerald"], button[class*="bg-purple"], button[class*="bg-yellow"],
   button[class*="bg-orange"] { white-space: nowrap !important; }
 
-  /* === Toasty SVG 顏色保護：避免被全域 CSS 蓋掉 fill/stroke === */
+  /* === Toasty SVG === */
   .toasty-mascot svg { display: block; }
-  .toasty-mascot svg path,
-  .toasty-mascot svg ellipse,
-  .toasty-mascot svg circle {
-    fill: revert;
-    stroke: revert;
-  }
 
   /* === Sticky bar 計數區單行排版（不堆疊） === */
   #selectedCount, #targetCount { display: inline; }
