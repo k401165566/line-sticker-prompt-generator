@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>LINE 貼圖 Prompt 產生器</title>
 <script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <style>
   body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft JhengHei", "PingFang TC", sans-serif; }
   .count-btn { padding: 0.75rem 1rem; border-radius: 0.75rem; background: #f3f4f6; font-weight: 600; transition: all 0.15s; border: 2px solid transparent; }
@@ -28,6 +29,14 @@
   .style-card .style-icon { font-size: 1.75rem; }
   .style-card .style-name { font-weight: 700; color: #111827; }
   .style-card .style-desc { font-size: 0.75rem; color: #6b7280; line-height: 1.4; margin-top: 0.25rem; }
+  .mode-card { border-color: #e5e7eb; background: white; }
+  .mode-card:hover { border-color: #10b981; background: #f0fdf4; }
+  .mode-card.active { border-color: #059669; background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%); }
+  .split-cell { position: relative; border: 1px solid #e5e7eb; border-radius: 0.5rem; overflow: hidden; background: #f9fafb; }
+  .split-cell img { display: block; width: 100%; height: auto; }
+  .split-cell .cell-num { position: absolute; top: 0.25rem; left: 0.25rem; background: rgba(0,0,0,0.6); color: white; font-size: 0.7rem; padding: 0.1rem 0.4rem; border-radius: 0.25rem; }
+  .split-cell .cell-dl { position: absolute; top: 0.25rem; right: 0.25rem; background: #10b981; color: white; font-size: 0.7rem; padding: 0.2rem 0.5rem; border-radius: 0.25rem; cursor: pointer; opacity: 0.9; }
+  .split-cell .cell-dl:hover { opacity: 1; }
 </style>
 </head>
 <body class="bg-gradient-to-br from-green-50 via-blue-50 to-purple-50 min-h-screen pb-32">
@@ -80,7 +89,7 @@
     <div id="styleGrid" class="grid grid-cols-2 md:grid-cols-3 gap-3"></div>
   </section>
 
-  <!-- Step 3: Count -->
+  <!-- Step 3: Count + Mode -->
   <section class="bg-white rounded-2xl shadow-md p-5 md:p-6 mb-5">
     <h2 class="text-lg md:text-xl font-bold mb-3">3️⃣ 選擇張數</h2>
     <div class="grid grid-cols-5 gap-2 md:gap-3">
@@ -91,6 +100,26 @@
       <button class="count-btn" data-count="40">40 張</button>
     </div>
     <p class="text-xs md:text-sm text-gray-500 mt-3">⚠️ 系統會自動多生 2 段（240×240 主圖 + 96×74 聊天標籤），LINE 上架必備</p>
+
+    <div class="mt-5 pt-4 border-t">
+      <div class="font-bold mb-2">輸出模式</div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <label class="mode-card flex items-start gap-2 p-3 rounded-xl border-2 cursor-pointer transition" data-mode="individual">
+          <input type="radio" name="mode" value="individual" class="mt-1">
+          <div>
+            <div class="font-bold">📄 一張一張獨立生</div>
+            <div class="text-xs text-gray-600 mt-0.5">每張一段 prompt，貼到 GPT 一次生一張。穩定、可單獨重生，但 慢。</div>
+          </div>
+        </label>
+        <label class="mode-card flex items-start gap-2 p-3 rounded-xl border-2 cursor-pointer transition" data-mode="batch">
+          <input type="radio" name="mode" value="batch" class="mt-1" checked>
+          <div>
+            <div class="font-bold">🗂 批次 8 張一組（4×2 排版）</div>
+            <div class="text-xs text-gray-600 mt-0.5">一段 prompt 一次出 8 張在同一張大圖。快、風格一致。下方有自動切圖工具幫你把大圖切成 8 個獨立 PNG。</div>
+          </div>
+        </label>
+      </div>
+    </div>
   </section>
 
   <!-- Step 4: Phrases -->
@@ -111,6 +140,27 @@
     <h2 class="text-lg md:text-xl font-bold mb-3">5️⃣ 自訂文字（選填）</h2>
     <textarea id="customText" rows="4" placeholder="一行一句，例如：&#10;我餓了&#10;週一憂鬱&#10;咖啡時間" class="w-full p-3 border border-gray-300 rounded-lg focus:border-green-400 focus:ring-1 focus:ring-green-400 outline-none font-mono text-sm"></textarea>
     <p class="text-xs text-gray-500 mt-1">這些會加進去你的勾選總數裡。AI 會自己想對應動作。</p>
+  </section>
+
+  <!-- Auto Splitter (only shown in batch mode) -->
+  <section id="splitterSection" class="bg-white rounded-2xl shadow-md p-5 md:p-6 mb-5">
+    <h2 class="text-lg md:text-xl font-bold mb-3">✂️ 自動切圖工具（批次模式必用）</h2>
+    <p class="text-sm text-gray-600 mb-3">GPT 生完 4×2 大圖後，把大圖丟進這裡 → 自動切成 8 張獨立 PNG → 一鍵打包下載。</p>
+    <div id="splitDrop" class="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center hover:border-purple-400 cursor-pointer transition bg-gray-50">
+      <input type="file" id="splitInput" accept="image/*" class="hidden">
+      <div id="splitHint">
+        <div class="text-4xl mb-2">📥</div>
+        <p class="font-medium">點擊或拖曳 GPT 大圖到這裡</p>
+        <p class="text-xs text-gray-500 mt-1">支援任意尺寸，會自動按 4 欄 × 2 列切成 8 張</p>
+      </div>
+    </div>
+    <div id="splitResult" class="hidden mt-4">
+      <div class="flex justify-between items-center mb-3">
+        <span class="text-sm font-medium text-gray-700">切好的 8 張預覽（點縮圖可下載單張）</span>
+        <button id="downloadZip" class="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 text-sm font-semibold">📦 全部打包下載 .zip</button>
+      </div>
+      <div id="splitGrid" class="grid grid-cols-4 gap-2"></div>
+    </div>
   </section>
 
   <!-- Results -->
@@ -419,6 +469,7 @@ const state = {
   selected: new Set(),
   imageDataUrl: null,
   selectedStyle: 'photo',
+  outputMode: 'batch',
 };
 
 // ============================================================
@@ -696,6 +747,68 @@ function fontBlock(styleId, text, isMain, isTab) {
   return `Text: Display the text "${text}" exactly as written. Style: ${fonts[styleId]} Position the text where it does NOT block any face.`;
 }
 
+function buildBatchPrompt({ phrases, charDesc, styleId, batchIndex, batchTotal }) {
+  const desc = charDesc.trim();
+  const charLine = desc ? `Reference subject details: ${desc}.` : null;
+  const isPhoto = styleId === 'photo';
+
+  const cellLines = phrases.map((p, i) => {
+    const pos = i + 1;
+    return `Cell ${pos} (${getCellPos(pos)}): Mood — ${p.action}.  Text — Chinese characters "${p.text}" (${Array.from(p.text).map(c => `「${c}」`).join('+')}, ${Array.from(p.text).length} chars, render exactly, no substitution).`;
+  }).join('\n');
+
+  const compositionLine = isPhoto
+    ? `Vary composition across cells — full group, parents only, child only, baby alone, close-up — pick whichever fits each cell's mood.`
+    : `Vary pose and expression across cells, but keep the same character design and proportions.`;
+  const decorationLine = isPhoto
+    ? `Decorations per cell: small hand-drawn elements (sparkles, hearts, stars, sun, moon, light bulb, music notes, confetti) appropriate to each text — never blocking faces, kept consistent in style across all 8 cells.`
+    : null;
+
+  const fontHint = {
+    photo: 'bold hand-written rounded Chinese font, thick (4-6px) WHITE outline, drop shadow, fill color matching mood',
+    chibi: 'bold rounded chibi-style Chinese font, thick contrasting outline',
+    kawaii: 'bubbly rounded kawaii Chinese font, thick white outline with bright candy fill',
+    doodle: 'messy handwritten Chinese matching the doodle illustration',
+    pixel: 'pixel bitmap Chinese font, single-pixel hard outline',
+    watercolor: 'elegant brush-script Chinese with soft watercolor edges',
+  }[styleId];
+
+  return [
+    `Generate ONE single wide-format image (approximately 2:1 horizontal aspect ratio, e.g. 1600x800px) containing 8 LINE stickers arranged in a 4-COLUMN x 2-ROW grid (4 wide, 2 tall).${batchTotal > 1 ? ` This is BATCH ${batchIndex} of ${batchTotal}.` : ''}`,
+    ``,
+    `CANVAS LAYOUT:`,
+    `- 8 EQUAL-SIZED cells, each one independent LINE sticker (~370:320 sticker proportion).`,
+    `- Cell positions:`,
+    `    Top row L→R:    Cell 1 | Cell 2 | Cell 3 | Cell 4`,
+    `    Bottom row L→R: Cell 5 | Cell 6 | Cell 7 | Cell 8`,
+    `- Background between and around cells: FULLY TRANSPARENT (alpha PNG). No visible borders, gridlines, frames, or numbering on the output.`,
+    `- Each cell's sticker stays inside its cell area with ≥10px internal padding. Stickers do not overlap cell boundaries.`,
+    ``,
+    styleBlock(styleId),
+    charLine,
+    ``,
+    compositionLine,
+    decorationLine,
+    ``,
+    `CELL CONTENTS (each cell is fully independent):`,
+    cellLines,
+    ``,
+    `TEXT RULES (apply to all 8 cells):`,
+    `- Each Chinese text must render exactly as specified — do NOT substitute, simplify, or merge characters.`,
+    `- Font style: ${fontHint}.`,
+    `- Position text per cell so it never blocks faces.`,
+    ``,
+    `CONSISTENCY: All 8 cells must use SAME source subjects, SAME outline style, SAME decoration aesthetic, SAME color palette. Vary only composition, mood, and text per cell.`,
+    ``,
+    `OUTPUT: One PNG image, transparent background, 4×2 grid of 8 LINE stickers. No labels, no cell numbers, no separators in the final image.`,
+  ].filter(Boolean).join('\n');
+}
+
+function getCellPos(n) {
+  const positions = ['top-left 1st', 'top-left 2nd', 'top-left 3rd', 'top-right 4th', 'bottom-left 1st', 'bottom-left 2nd', 'bottom-left 3rd', 'bottom-right 4th'];
+  return positions[n - 1] || `position ${n}`;
+}
+
 function buildPrompt({ text, action, isMain, isTab, charDesc, styleId }) {
   const desc = charDesc.trim();
   const charLine = desc ? `Reference subject details: ${desc}.` : null;
@@ -795,23 +908,45 @@ function generate() {
     toast(`目前只有 ${picked.length} 句，少於目標 ${state.targetCount} 句`, 3000);
   }
 
-  // 建構結果：N 張 + 主圖 + 標籤
+  // 建構結果：依 outputMode 分流
   const styleId = state.selectedStyle;
   const results = [];
-  picked.forEach((p, idx) => {
-    results.push({
-      title: `第 ${idx + 1} 張：${p.text}`,
-      subtitle: p.action,
-      prompt: buildPrompt({ text: p.text, action: p.action, charDesc, styleId }),
+
+  if (state.outputMode === 'batch') {
+    const batchSize = 8;
+    const batches = [];
+    for (let i = 0; i < picked.length; i += batchSize) {
+      batches.push(picked.slice(i, i + batchSize));
+    }
+    batches.forEach((batch, bIdx) => {
+      const filled = [...batch];
+      while (filled.length < batchSize) {
+        filled.push({ text: '⋯', action: '(empty cell — leave this cell completely blank/transparent)' });
+      }
+      const cellSummary = batch.map((p, i) => `${i + 1}.${p.text}`).join(' / ');
+      results.push({
+        title: `🗂 批次 ${bIdx + 1} / ${batches.length}（4×2 grid，含 ${batch.length} 張）`,
+        subtitle: cellSummary,
+        prompt: buildBatchPrompt({ phrases: filled, charDesc, styleId, batchIndex: bIdx + 1, batchTotal: batches.length }),
+      });
     });
-  });
+  } else {
+    picked.forEach((p, idx) => {
+      results.push({
+        title: `第 ${idx + 1} 張：${p.text}`,
+        subtitle: p.action,
+        prompt: buildPrompt({ text: p.text, action: p.action, charDesc, styleId }),
+      });
+    });
+  }
+
   results.push({
-    title: '🟢 主圖（240×240）— LINE 上架必備',
+    title: '🟢 主圖(240×240)— LINE 上架必備',
     subtitle: 'Main cover image for LINE sticker store',
     prompt: buildPrompt({ isMain: true, charDesc, styleId }),
   });
   results.push({
-    title: '🔵 聊天標籤（96×74）— LINE 上架必備',
+    title: '🔵 聊天標籤(96×74)— LINE 上架必備',
     subtitle: 'Chat tab icon shown in messaging app',
     prompt: buildPrompt({ isTab: true, charDesc, styleId }),
   });
@@ -907,6 +1042,115 @@ function buildStyleGrid() {
 }
 
 // ============================================================
+// 輸出模式切換
+// ============================================================
+function setupModeToggle() {
+  const apply = (mode) => {
+    state.outputMode = mode;
+    document.querySelectorAll('.mode-card').forEach(c => c.classList.toggle('active', c.dataset.mode === mode));
+    document.querySelectorAll('input[name="mode"]').forEach(r => r.checked = r.value === mode);
+    $('splitterSection').classList.toggle('hidden', mode !== 'batch');
+  };
+  document.querySelectorAll('.mode-card').forEach(c => {
+    c.onclick = () => apply(c.dataset.mode);
+  });
+  apply(state.outputMode);
+}
+
+// ============================================================
+// 自動切圖
+// ============================================================
+function setupSplitter() {
+  const drop = $('splitDrop');
+  const input = $('splitInput');
+  drop.onclick = () => input.click();
+  drop.ondragover = e => { e.preventDefault(); drop.classList.add('border-purple-400', 'bg-purple-50'); };
+  drop.ondragleave = () => drop.classList.remove('border-purple-400', 'bg-purple-50');
+  drop.ondrop = e => {
+    e.preventDefault();
+    drop.classList.remove('border-purple-400', 'bg-purple-50');
+    const f = e.dataTransfer.files[0];
+    if (f) handleSplit(f);
+  };
+  input.onchange = () => input.files[0] && handleSplit(input.files[0]);
+
+  function handleSplit(file) {
+    if (!file.type.startsWith('image/')) { toast('請上傳圖片檔'); return; }
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = new Image();
+      img.onload = () => splitInto4x2(img);
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function splitInto4x2(img) {
+    const cols = 4, rows = 2;
+    const cellW = Math.floor(img.naturalWidth / cols);
+    const cellH = Math.floor(img.naturalHeight / rows);
+    const cells = [];
+    const grid = $('splitGrid');
+    grid.innerHTML = '';
+
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const idx = r * cols + c + 1;
+        const canvas = document.createElement('canvas');
+        canvas.width = cellW;
+        canvas.height = cellH;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, c * cellW, r * cellH, cellW, cellH, 0, 0, cellW, cellH);
+        const dataUrl = canvas.toDataURL('image/png');
+        cells.push({ idx, dataUrl, canvas });
+
+        const cell = document.createElement('div');
+        cell.className = 'split-cell';
+        cell.innerHTML = `
+          <span class="cell-num">${idx}</span>
+          <span class="cell-dl">下載</span>
+          <img src="${dataUrl}" alt="cell-${idx}">
+        `;
+        cell.querySelector('.cell-dl').onclick = (ev) => {
+          ev.stopPropagation();
+          downloadDataUrl(dataUrl, `sticker-${String(idx).padStart(2, '0')}.png`);
+        };
+        cell.onclick = () => downloadDataUrl(dataUrl, `sticker-${String(idx).padStart(2, '0')}.png`);
+        grid.appendChild(cell);
+      }
+    }
+    $('splitResult').classList.remove('hidden');
+
+    $('downloadZip').onclick = async () => {
+      if (typeof JSZip === 'undefined') { toast('JSZip 載入失敗，請改用個別下載'); return; }
+      const zip = new JSZip();
+      cells.forEach(c => {
+        const base64 = c.dataUrl.split(',')[1];
+        zip.file(`sticker-${String(c.idx).padStart(2, '0')}.png`, base64, { base64: true });
+      });
+      const blob = await zip.generateAsync({ type: 'blob' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `line-stickers-${Date.now()}.zip`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast('已打包下載 8 張 PNG');
+    };
+
+    toast(`已切成 ${cells.length} 張`);
+    $('splitResult').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function downloadDataUrl(url, filename) {
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+  }
+}
+
+// ============================================================
 // 啟動
 // ============================================================
 buildStyleGrid();
@@ -915,6 +1159,8 @@ setupUpload();
 setupCountBtns();
 setupCatBtns();
 setupGlobalBtns();
+setupModeToggle();
+setupSplitter();
 $('generate').onclick = generate;
 updateCounts();
 </script>
