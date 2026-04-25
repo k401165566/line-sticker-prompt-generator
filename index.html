@@ -660,7 +660,24 @@ function fontBlock(styleId, text, isMain, isTab) {
     pixel: `pixel bitmap Chinese font, single-pixel hard outline, retro game UI feel.`,
     watercolor: `elegant brush-script Chinese font with soft watercolor edges, gentle ink stroke.`,
   };
-  return `Text: Display the Chinese text "${text}" in ${fonts[styleId]} Position the text where it does NOT block any face. Must stay legible at small messaging-app size.`;
+  const chars = Array.from(text);
+  const charList = chars.map(c => `「${c}」`).join(' + ');
+  const isChinese = /[一-龥]/.test(text);
+
+  if (isChinese) {
+    return [
+      `Text — STRICT CHARACTER ACCURACY (this is critical, image models often misrender Chinese):`,
+      `- The text MUST be EXACTLY: "${text}"  (${chars.length} character${chars.length > 1 ? 's' : ''})`,
+      `- Character-by-character: ${charList}`,
+      `- DO NOT substitute any character with a visually-similar but incorrect one (common mistakes: 羞→着/差/羔, 開→関, 著→着, 媽→嗎). If you are not 100% sure of a glyph's strokes, draw it MORE SIMPLY but with the CORRECT character — never replace with a different character.`,
+      `- DO NOT add, remove, simplify, or rearrange any character.`,
+      `- DO NOT add punctuation, emoji, English translation, or any other text — only the ${chars.length} character${chars.length > 1 ? 's' : ''} above.`,
+      `- Make the text large enough that every stroke is verifiable at thumbnail size.`,
+      ``,
+      `Style: ${fonts[styleId]} Position the text where it does NOT block any face.`,
+    ].join('\n');
+  }
+  return `Text: Display the text "${text}" exactly as written. Style: ${fonts[styleId]} Position the text where it does NOT block any face.`;
 }
 
 function buildPrompt({ text, action, isMain, isTab, charDesc, styleId }) {
