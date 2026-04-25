@@ -873,7 +873,17 @@ function buildBatchPrompt({ phrases, photos, charDesc, styleId, batchIndex, batc
   }).join('\n');
 
   const compositionLine = isPhoto
-    ? `Vary composition across cells — full group, parents only, child only, baby alone, close-up — pick whichever fits each cell's mood.`
+    ? [
+        `COMPOSITION QUOTA across the 8 cells (when reference photos show multiple people / a family):`,
+        `- AT LEAST 3 of the 8 cells MUST be FULL group shots showing all family members together. This is a hard floor — do not produce fewer than 3 group cells.`,
+        `- AT LEAST 1 cell: full focus on the youngest child / baby alone.`,
+        `- AT LEAST 1 cell: full focus on the older child alone.`,
+        `- Remaining cells: parent pairs, parent + child duos, individual close-ups — your choice.`,
+        `- DO NOT make more than 3 of the 8 cells single-person close-ups. Single close-ups are over-represented by default; you must consciously push toward group / interactive compositions.`,
+        `- This composition quota is as important as matching each cell's mood. If a cell's text could fit several compositions, pick the one that helps the quota.`,
+        `- Prefer warm interactive group moments (members touching, looking at each other, hugging, smiling together) over isolated portraits.`,
+        `(If the reference photos contain only ONE subject total, ignore this quota and just vary poses naturally.)`,
+      ].join('\n')
     : `Vary pose and expression across cells, but keep the same character design and proportions.`;
   const decorationLine = isPhoto
     ? `Decorations per cell: small hand-drawn elements (sparkles, hearts, stars, sun, moon, light bulb, music notes, confetti) appropriate to each text — never blocking faces, kept consistent in style across all 8 cells.`
