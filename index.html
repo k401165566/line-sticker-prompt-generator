@@ -2896,10 +2896,10 @@ function detectInAppBrowser() {
   const tests = [
     { name: 'LINE', re: /\bLine\//i },
     { name: 'Facebook', re: /\bFBAN\b|\bFBAV\b|\bFB_IAB\b/i },
+    { name: 'Threads', re: /\bThreads\b|\bBarcelona\b/i },
     { name: 'Instagram', re: /\bInstagram\b/i },
-    { name: 'Threads', re: /\bThreads\b/i },
     { name: 'WeChat', re: /\bMicroMessenger\b/i },
-    { name: 'TikTok', re: /\bTikTok\b|\bBytedance\b/i },
+    { name: 'TikTok', re: /\bTikTok\b|\bBytedance\b|\baweme\b/i },
     { name: 'Twitter/X', re: /TwitterAndroid|Twitter for iPhone|Twitter for iPad/i },
   ];
   const matched = tests.find(t => t.re.test(ua));
