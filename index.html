@@ -290,12 +290,13 @@
 
     <!-- 使用照片提示區 -->
     <div id="resultsPhotoReminder" class="bg-yellow-50 border-2 border-yellow-300 rounded-xl p-4 mb-4">
-      <div class="font-bold text-yellow-800 mb-2 text-sm md:text-base">📸 重要：每段 prompt 貼到 ChatGPT 時，這 <span id="resultsPhotoCount">N</span> 張照片要一起拖過去</div>
+      <div class="font-bold text-yellow-800 mb-2 text-sm md:text-base">📸 每段 prompt 貼到 ChatGPT 時，這 <span id="resultsPhotoCount">N</span> 張照片要一起附給他</div>
       <div id="resultsPhotoStrip" class="flex gap-2 overflow-x-auto py-1"></div>
-      <div class="flex flex-wrap gap-2 mt-3">
-        <button id="downloadPhotosZip" class="px-3 py-2 bg-yellow-500 hover:bg-yellow-600 text-white rounded-lg text-sm font-bold">📦 打包下載這些照片 (.zip)</button>
-        <p class="text-xs text-gray-600 self-center">下載解壓後可以一次選全部拖到 ChatGPT</p>
+      <div class="mt-3 space-y-1.5 text-sm text-gray-700">
+        <div>📱 <strong>手機</strong>：直接 <strong class="text-yellow-700">長按上面任一張照片</strong> → 選「儲存圖片」存到相簿，再到 ChatGPT 上傳。</div>
+        <div>💻 <strong>電腦</strong>：點下方按鈕打包下載 zip → 解壓後全選拖到 ChatGPT。</div>
       </div>
+      <button id="downloadPhotosZip" class="mt-2 px-3 py-2 bg-yellow-500 hover:bg-yellow-600 text-white rounded-lg text-sm font-bold">📦 打包下載照片 (.zip)</button>
     </div>
 
     <div id="results" class="space-y-3"></div>
@@ -1519,7 +1520,7 @@ function renderResults(results) {
     const wrap = document.createElement('div');
     wrap.className = 'relative flex-shrink-0';
     wrap.innerHTML = `
-      <img src="${p.dataUrl}" class="w-16 h-16 md:w-20 md:h-20 object-cover rounded-lg border-2 border-yellow-300">
+      <img src="${p.dataUrl}" alt="photo-${idx + 1}" class="w-24 h-24 md:w-20 md:h-20 object-cover rounded-lg border-2 border-yellow-300 shadow-sm" draggable="true">
       <span class="absolute -top-1 -left-1 bg-yellow-500 text-white text-xs font-bold px-1.5 rounded">${idx + 1}</span>
     `;
     photoStrip.appendChild(wrap);
@@ -1530,19 +1531,40 @@ function renderResults(results) {
     for (let i = 0; i < state.photos.length; i++) {
       const p = state.photos[i];
       const base64 = p.dataUrl.split(',')[1];
-      // 從 dataUrl 抓 mime
       const mime = (p.dataUrl.match(/^data:(image\/\w+);/) || [])[1] || 'image/png';
       const ext = mime.split('/')[1] === 'jpeg' ? 'jpg' : (mime.split('/')[1] || 'png');
       zip.file(`photo-${String(i + 1).padStart(2, '0')}.${ext}`, base64, { base64: true });
     }
     const blob = await zip.generateAsync({ type: 'blob' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `reference-photos-${Date.now()}.zip`;
-    a.click();
-    URL.revokeObjectURL(url);
-    toast('已打包下載 ' + state.photos.length + ' 張照片');
+    const fileName = `reference-photos-${Date.now()}.zip`;
+
+    // 優先嘗試 native share（手機友善）
+    if (navigator.canShare) {
+      try {
+        const file = new File([blob], fileName, { type: 'application/zip' });
+        if (navigator.canShare({ files: [file] })) {
+          await navigator.share({ files: [file], title: '參考照片' });
+          return;
+        }
+      } catch (err) {
+        // 使用者取消或不支援，落回直接下載
+      }
+    }
+
+    // Fallback: 一般下載
+    try {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      toast('已打包下載 ' + state.photos.length + ' 張照片');
+    } catch (err) {
+      toast('下載失敗，請改用「長按照片儲存」');
+    }
   };
 
   sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
