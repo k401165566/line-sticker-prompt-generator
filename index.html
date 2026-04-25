@@ -208,7 +208,12 @@
       </div>
     </div>
     <div id="results" class="space-y-3"></div>
+    <!-- Donate (after results) -->
+    <div id="donateAfterResults" class="mt-6"></div>
   </section>
+
+  <!-- Donate (footer) -->
+  <div id="donateFooter" class="mb-5"></div>
 
 </div>
 
@@ -1289,6 +1294,65 @@ function setupSplitter() {
 }
 
 // ============================================================
+// 贊助區塊
+// ============================================================
+const DONATE = {
+  bankName: '永豐銀行',
+  bankCode: '807',
+  accountName: '李明修',
+  accountNo: '08801800698758',
+  shopName: '歐大潮流服飾，線上商店',
+  shopUrl: 'https://s.shopee.tw/6px2uqNab0',
+};
+
+function donateHTML() {
+  return `
+    <section class="bg-gradient-to-br from-yellow-50 to-orange-50 border-2 border-yellow-200 rounded-2xl shadow p-5 md:p-6">
+      <div class="text-center mb-4">
+        <div class="text-lg md:text-xl font-bold text-gray-800">☕ 免費工具，覺得好用可以請我喝杯咖啡</div>
+        <div class="text-xs md:text-sm text-gray-600 mt-1">完全免費使用，但維護要時間 — 任何金額都很感謝 🙏</div>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <!-- 銀行 -->
+        <div class="bg-white rounded-xl p-4 border border-yellow-200">
+          <div class="font-bold text-gray-800 mb-2">🏦 銀行匯款</div>
+          <div class="text-sm space-y-1">
+            <div><span class="text-gray-500 inline-block w-12">戶名</span><span class="font-medium">${DONATE.accountName}</span></div>
+            <div><span class="text-gray-500 inline-block w-12">銀行</span><span class="font-medium">${DONATE.bankName}（${DONATE.bankCode}）</span></div>
+            <div><span class="text-gray-500 inline-block w-12">帳號</span><span class="font-mono font-bold text-gray-900">${DONATE.accountNo}</span></div>
+          </div>
+          <button class="donate-copy-bank mt-3 w-full px-3 py-2 bg-yellow-400 text-gray-900 rounded-lg hover:bg-yellow-500 text-sm font-bold transition">📋 複製帳號</button>
+        </div>
+        <!-- 蝦皮 -->
+        <div class="bg-white rounded-xl p-4 border border-orange-200">
+          <div class="font-bold text-gray-800 mb-2">🛒 逛逛我的蝦皮店</div>
+          <div class="text-sm space-y-1">
+            <div class="font-medium text-gray-800">${DONATE.shopName}</div>
+            <div class="text-xs text-gray-600">逛逛、買點東西也是支持 ❤️</div>
+            <div class="text-xs text-gray-500 mt-1">💡 蝦皮連結若被攔截，搜尋店鋪名也找得到</div>
+          </div>
+          <a href="${DONATE.shopUrl}" target="_blank" rel="noopener" class="mt-3 block w-full px-3 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 text-sm font-bold text-center transition">前往蝦皮店鋪 →</a>
+        </div>
+      </div>
+    </section>
+  `;
+}
+
+function setupDonate() {
+  $('donateFooter').innerHTML = donateHTML();
+  $('donateAfterResults').innerHTML = donateHTML();
+  // bind copy buttons
+  document.querySelectorAll('.donate-copy-bank').forEach(btn => {
+    btn.onclick = () => {
+      navigator.clipboard.writeText(DONATE.accountNo).then(
+        () => toast('已複製帳號：' + DONATE.accountNo),
+        () => toast('複製失敗，請手動複製')
+      );
+    };
+  });
+}
+
+// ============================================================
 // 啟動
 // ============================================================
 buildStyleGrid();
@@ -1299,6 +1363,7 @@ setupCatBtns();
 setupGlobalBtns();
 setupModeToggle();
 setupSplitter();
+setupDonate();
 $('generate').onclick = generate;
 updateCounts();
 </script>
