@@ -598,11 +598,18 @@ function styleBlock(styleId) {
   const blocks = {
     photo: [
       `STYLE — Photo Cutout Collage:`,
-      `- USE THE ATTACHED PHOTO DIRECTLY. DO NOT redraw, illustrate, or transform the subjects into cartoons. Preserve the actual faces, clothing, and original photo lighting EXACTLY as in the source.`,
-      `- Cleanly cut out the subject(s) from the original background.`,
-      `- Add a thick (5-7px) WHITE sticker-style outline around the cut-out subject, plus a soft drop shadow.`,
-      `- Background must be fully transparent PNG.`,
-      `- This is LINE-Custom-Sticker style: real photo + outline + decorations + handwritten text.`,
+      `- USE THE ATTACHED PHOTO DIRECTLY. DO NOT redraw, illustrate, paint over, or transform the subjects into cartoons. Preserve the actual faces, hair, clothing, and original photo lighting EXACTLY as in the source.`,
+      ``,
+      `CRITICAL CUTOUT RULES (must follow strictly to avoid broken images):`,
+      `- COMPLETE SUBJECTS: The chosen person/people must appear COMPLETELY in the final image — full head with the entire hairstyle visible, full neck, both shoulders, and at least upper torso. NEVER crop off the top of any head, NEVER crop hair mid-way, NEVER cut a face in half, NEVER leave hands or shoulders chopped at the canvas edge.`,
+      `- SCALE DOWN, NEVER CHOP: If the chosen subject(s) cannot fit the 370x320 canvas at full size, SCALE THEM DOWN proportionally so they fit completely. DO NOT crop body parts to make them fit.`,
+      `- CLEAN SILHOUETTE: The cutout must follow the natural silhouette of the subject precisely — smooth accurate edges, no jagged shapes, no missing pieces, no holes inside the body, no semi-transparent stray pixels around hair.`,
+      `- HAIR PRESERVATION: Pay extra attention to hair edges — include every wisp of hair from the source photo, do not cut hair tops flat against the canvas top edge.`,
+      `- IF cropping at the bottom is needed, only crop at natural body points (mid-torso / waist / below shoulders) — never near the neck or face.`,
+      ``,
+      `- Add a thick (5-7px) WHITE sticker-style outline around the FULL cutout silhouette, plus a soft drop shadow.`,
+      `- Background must be fully transparent PNG (alpha channel only, no black or white fill).`,
+      `- This is LINE-Custom-Sticker style: real photo + clean outline + decorations + handwritten text.`,
     ],
     chibi: [
       `STYLE — Q-version Chibi Cartoon:`,
