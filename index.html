@@ -4,6 +4,17 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>LINE 貼圖指令產生器</title>
+<meta name="description" content="上傳照片 → 一鍵產生 ChatGPT Images 2.0 提示詞，批量設計 LINE 貼圖。500+ 中文文字模板、6 種風格、自動切圖、合規尺寸自動處理。免費使用。">
+<meta name="theme-color" content="#10b981">
+<meta property="og:type" content="website">
+<meta property="og:title" content="LINE 貼圖指令產生器">
+<meta property="og:description" content="上傳照片 → 一鍵產生 ChatGPT 提示詞，批量設計 LINE 貼圖。500+ 中文文字模板、6 種風格、自動切圖、合規尺寸自動處理。免費。">
+<meta property="og:url" content="https://line-sticker-prompt-generator.pages.dev">
+<meta property="og:locale" content="zh_TW">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="LINE 貼圖指令產生器">
+<meta name="twitter:description" content="上傳照片 → 一鍵產生 ChatGPT 提示詞，批量設計 LINE 貼圖。免費。">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🟢%3C/text%3E%3C/svg%3E">
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <style>
@@ -18,7 +29,8 @@
   .phrase-chip:hover { border-color: #10b981; background: #f0fdf4; }
   .phrase-chip.checked { background: #10b981; color: white; border-color: #059669; }
   .phrase-chip.checked .phrase-action { color: #d1fae5; }
-  .phrase-action { font-size: 0.7rem; color: #9ca3af; margin-left: auto; max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .phrase-action { font-size: 0.7rem; color: #9ca3af; margin-left: auto; max-width: 60px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  @media (min-width: 768px) { .phrase-action { max-width: 110px; } }
   .result-card { background: #f9fafb; border-radius: 0.75rem; padding: 1rem; border: 1px solid #e5e7eb; }
   .result-card pre { white-space: pre-wrap; word-break: break-word; font-size: 0.85rem; line-height: 1.5; }
   details > summary { cursor: pointer; user-select: none; }
@@ -194,7 +206,7 @@
         </div>
       </details>
 
-      <div id="splitGrid" class="grid grid-cols-4 gap-2"></div>
+      <div id="splitGrid" class="grid grid-cols-2 md:grid-cols-4 gap-2"></div>
     </div>
   </section>
 
@@ -990,6 +1002,7 @@ function setupUpload() {
         state.photos.push({ id: ++_photoIdCounter, dataUrl: e.target.result });
         renderPhotoList();
       };
+      reader.onerror = () => toast('讀取「' + f.name + '」失敗，跳過');
       reader.readAsDataURL(f);
     });
   }
@@ -1449,7 +1462,10 @@ function renderResults(results) {
       </details>
     `;
     card.querySelector('.copy-btn').onclick = () => {
-      navigator.clipboard.writeText(r.prompt).then(() => toast('已複製這張的 prompt'));
+      navigator.clipboard.writeText(r.prompt).then(
+        () => toast('已複製這張的 prompt'),
+        () => toast('複製失敗，請手動展開複製')
+      );
     };
     box.appendChild(card);
   });
@@ -1460,7 +1476,10 @@ function renderResults(results) {
   // 全部複製
   $('copyAll').onclick = () => {
     const all = results.map(r => `=== ${r.title} ===\n${r.prompt}`).join('\n\n\n');
-    navigator.clipboard.writeText(all).then(() => toast('已複製全部 ' + results.length + ' 段'));
+    navigator.clipboard.writeText(all).then(
+      () => toast('已複製全部 ' + results.length + ' 段'),
+      () => toast('複製失敗，請改用「下載 .txt」')
+    );
   };
   // 下載
   $('downloadAll').onclick = () => {
@@ -1555,8 +1574,10 @@ function setupSplitter() {
     reader.onload = e => {
       const img = new Image();
       img.onload = () => splitInto4x2(img);
+      img.onerror = () => toast('圖片讀取失敗，請試試另一張');
       img.src = e.target.result;
     };
+    reader.onerror = () => toast('檔案讀取失敗');
     reader.readAsDataURL(file);
   }
 
@@ -1663,7 +1684,15 @@ function setupSplitter() {
       const c2 = parseInt($('cutCol2').value) / 100;
       const c3 = parseInt($('cutCol3').value) / 100;
       const r1 = parseInt($('cutRow1').value) / 100;
-      xCuts = [0, Math.round(W * c1), Math.round(W * c2), Math.round(W * c3), W];
+      // 排序 + 強制最小間距（避免拉到一樣 → 0 寬 cell）
+      const minGap = Math.max(40, Math.round(W * 0.05));
+      const sorted = [Math.round(W * c1), Math.round(W * c2), Math.round(W * c3)].sort((a, b) => a - b);
+      if (sorted[1] - sorted[0] < minGap) sorted[1] = sorted[0] + minGap;
+      if (sorted[2] - sorted[1] < minGap) sorted[2] = sorted[1] + minGap;
+      sorted[0] = Math.max(minGap, Math.min(sorted[0], W - 3 * minGap));
+      sorted[1] = Math.max(sorted[0] + minGap, Math.min(sorted[1], W - 2 * minGap));
+      sorted[2] = Math.max(sorted[1] + minGap, Math.min(sorted[2], W - minGap));
+      xCuts = [0, ...sorted, W];
       yCuts = [0, Math.round(H * r1), H];
     } else if (mode === 'smart') {
       const smart = findSmartCuts(img, cols, rows);
@@ -1795,12 +1824,14 @@ function setupLineFitters() {
       const reader = new FileReader();
       reader.onload = e => {
         const img = new Image();
+        img.onerror = () => toast('圖片讀取失敗，請試試另一張');
         img.onload = () => {
           // contain：等比縮到 targetW x targetH 框內，剩餘留透明
           const canvas = document.createElement('canvas');
           canvas.width = targetW;
           canvas.height = targetH;
           const ctx = canvas.getContext('2d');
+          if (!ctx) { toast('瀏覽器記憶體不足，請重整再試'); return; }
           ctx.imageSmoothingQuality = 'high';
           ctx.clearRect(0, 0, targetW, targetH);
           const scale = Math.min(targetW / img.naturalWidth, targetH / img.naturalHeight);
@@ -1821,6 +1852,7 @@ function setupLineFitters() {
         };
         img.src = e.target.result;
       };
+      reader.onerror = () => toast('檔案讀取失敗');
       reader.readAsDataURL(file);
     }
   }
