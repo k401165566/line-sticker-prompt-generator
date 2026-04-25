@@ -90,26 +90,6 @@
     <!-- Photo List -->
     <div id="photoList" class="hidden mt-4 space-y-2"></div>
 
-    <!-- Tag suggestions -->
-    <div id="tagHints" class="hidden mt-3 p-3 bg-gray-50 rounded-lg">
-      <span class="text-xs text-gray-600 font-medium">💡 標籤建議（點下面關鍵字 → 寫進有焦點的標籤輸入框）：</span>
-      <div class="flex flex-wrap gap-1 mt-2">
-        <button class="tag-chip" data-tag="笑 / 開心">笑 / 開心</button>
-        <button class="tag-chip" data-tag="驚訝 / 傻眼">驚訝 / 傻眼</button>
-        <button class="tag-chip" data-tag="害羞">害羞</button>
-        <button class="tag-chip" data-tag="生氣">生氣</button>
-        <button class="tag-chip" data-tag="哭哭 / 難過">哭哭 / 難過</button>
-        <button class="tag-chip" data-tag="撒嬌 / 賣萌">撒嬌 / 賣萌</button>
-        <button class="tag-chip" data-tag="無奈 / 嘆氣">無奈 / 嘆氣</button>
-        <button class="tag-chip" data-tag="揮手 / 打招呼">揮手 / 打招呼</button>
-        <button class="tag-chip" data-tag="抱抱">抱抱</button>
-        <button class="tag-chip" data-tag="思考">思考</button>
-        <button class="tag-chip" data-tag="睡覺 / 累">睡覺 / 累</button>
-        <button class="tag-chip" data-tag="比讚 / 加油">比讚 / 加油</button>
-        <button class="tag-chip" data-tag="中性">中性</button>
-      </div>
-    </div>
-
     <div class="mt-4">
       <label class="text-sm font-medium text-gray-700">補充角色描述（選填）</label>
       <textarea id="charDesc" rows="2" placeholder="例：媽媽短髮、爸爸戴黑框眼鏡、哥哥 3 歲、寶寶滿月" class="w-full mt-1 p-3 border border-gray-300 rounded-lg focus:border-green-400 focus:ring-1 focus:ring-green-400 outline-none"></textarea>
@@ -848,10 +828,9 @@ const state = {
   targetCount: 16,
   currentTab: 'greeting',
   selected: new Set(),
-  photos: [], // [{ id, dataUrl, tag }]
+  photos: [], // [{ id, dataUrl }]
   selectedStyle: 'photo',
   outputMode: 'batch',
-  focusedPhotoId: null,
 };
 let _photoIdCounter = 0;
 
@@ -965,41 +944,22 @@ function setupUpload() {
     toAdd.forEach(f => {
       const reader = new FileReader();
       reader.onload = e => {
-        state.photos.push({ id: ++_photoIdCounter, dataUrl: e.target.result, tag: '' });
+        state.photos.push({ id: ++_photoIdCounter, dataUrl: e.target.result });
         renderPhotoList();
       };
       reader.readAsDataURL(f);
     });
   }
-
-  // Tag suggestion chips → write into focused tag input
-  document.querySelectorAll('.tag-chip').forEach(chip => {
-    chip.onclick = () => {
-      if (!state.focusedPhotoId) { toast('請先點任一張照片的標籤輸入框'); return; }
-      const p = state.photos.find(x => x.id === state.focusedPhotoId);
-      if (!p) return;
-      p.tag = chip.dataset.tag;
-      renderPhotoList();
-      // Re-focus the same tag input
-      setTimeout(() => {
-        const el = document.querySelector(`.photo-tag[data-photo-id="${p.id}"]`);
-        if (el) el.focus();
-      }, 0);
-    };
-  });
 }
 
 function renderPhotoList() {
   const list = $('photoList');
-  const tagHints = $('tagHints');
   list.innerHTML = '';
   if (state.photos.length === 0) {
     list.classList.add('hidden');
-    tagHints.classList.add('hidden');
     return;
   }
   list.classList.remove('hidden');
-  tagHints.classList.remove('hidden');
 
   state.photos.forEach((p, idx) => {
     const item = document.createElement('div');
@@ -1007,12 +967,9 @@ function renderPhotoList() {
     item.innerHTML = `
       <span class="photo-num">#${idx + 1}</span>
       <img src="${p.dataUrl}" alt="photo-${idx + 1}">
-      <input class="photo-tag" data-photo-id="${p.id}" type="text" placeholder="標籤（選填）：例 笑、驚訝、害羞" value="${escapeAttr(p.tag)}">
+      <span class="flex-1 text-sm text-gray-500">參考照片 #${idx + 1}</span>
       <span class="photo-rm" data-photo-id="${p.id}">移除</span>
     `;
-    const tagInput = item.querySelector('.photo-tag');
-    tagInput.oninput = () => { p.tag = tagInput.value; };
-    tagInput.onfocus = () => { state.focusedPhotoId = p.id; };
     item.querySelector('.photo-rm').onclick = () => {
       state.photos = state.photos.filter(x => x.id !== p.id);
       renderPhotoList();
@@ -1194,15 +1151,9 @@ function photoSetBlock(photos) {
   const n = photos.length;
   if (n === 0) return null;
   if (n === 1) return `Reference photo: 1 attached.`;
-  const lines = photos.map((p, i) => `  Photo #${i + 1}${p.tag ? ` — tagged "${p.tag}"` : ''}`);
-  const tagged = photos.filter(p => p.tag).length;
-  const guideLine = tagged > 0
-    ? `For each cell/sticker, PICK the photo from this set that best matches the cell's mood. If a cell's emotion matches a photo's tag (e.g. cell mood is "shy / blushing" → use the photo tagged "害羞"), strongly prefer that tagged photo.`
-    : `For each cell/sticker, PICK the photo from this set that best matches the cell's mood.`;
   return [
-    `Reference photo SET: ${n} photos attached.`,
-    ...lines,
-    guideLine,
+    `Reference photo SET: ${n} photos attached (numbered #1 to #${n} in the order they appear).`,
+    `For each cell/sticker, PICK the photo from this set whose subject expression and pose best fit the cell's mood and text.`,
     `Use ONE photo per cell — the most fitting one. Use the actual face from that chosen photo verbatim, never blend faces from multiple photos in one sticker.`,
   ].join('\n');
 }
