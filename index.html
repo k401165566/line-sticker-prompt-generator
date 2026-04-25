@@ -40,6 +40,26 @@
     50% { box-shadow: 0 0 0 12px rgba(16, 185, 129, 0), 0 4px 12px rgba(0,0,0,0.1); }
   }
   #generate.ready { animation: pulseGlow 1.5s ease-in-out infinite; }
+  #cutCanvas { width: 100%; max-width: 600px; }
+  #cutPreviewImg { pointer-events: none; user-select: none; -webkit-user-select: none; }
+  .cut-line { position: absolute; z-index: 10; touch-action: none; }
+  .cut-line-v { top: 0; bottom: 0; width: 3px; background: rgba(239, 68, 68, 0.85); transform: translateX(-50%); cursor: ew-resize; }
+  .cut-line-h { left: 0; right: 0; height: 3px; background: rgba(239, 68, 68, 0.85); transform: translateY(-50%); cursor: ns-resize; }
+  /* 加大手指可點擊區（透明擴展） */
+  .cut-line-v::before { content: ''; position: absolute; top: 0; bottom: 0; left: -16px; right: -16px; }
+  .cut-line-h::before { content: ''; position: absolute; left: 0; right: 0; top: -16px; bottom: -16px; }
+  /* 中央拖把手 */
+  .cut-line::after {
+    content: ''; position: absolute; top: 50%; left: 50%;
+    width: 28px; height: 28px;
+    background: rgb(239, 68, 68); border: 3px solid white;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+    pointer-events: none;
+  }
+  .cut-line.dragging { background: rgba(220, 38, 38, 1); }
+  .cut-line.dragging::after { transform: translate(-50%, -50%) scale(1.15); background: rgb(220, 38, 38); }
   .result-card { background: #f9fafb; border-radius: 0.75rem; padding: 1rem; border: 1px solid #e5e7eb; }
   .result-card pre { white-space: pre-wrap; word-break: break-word; font-size: 0.85rem; line-height: 1.5; }
   details > summary { cursor: pointer; user-select: none; }
@@ -207,54 +227,46 @@
       </div>
     </div>
     <div id="splitResult" class="hidden mt-4">
-      <div class="flex justify-between items-center mb-3 flex-wrap gap-2">
-        <span class="text-sm font-medium text-gray-700">切好的 8 張預覽（點縮圖可下載單張）</span>
-        <button id="downloadZip" class="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 text-sm font-semibold">📦 全部打包下載 .zip</button>
-      </div>
 
-      <!-- Manual cut adjust -->
-      <details class="mb-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-        <summary class="cursor-pointer p-3 font-medium text-sm text-yellow-800">🛠 切到貼圖了？打開這裡手動微調切點</summary>
-        <div class="p-3 pt-0 space-y-3 text-sm">
-          <p class="text-xs text-gray-700 bg-yellow-100 p-2 rounded">
-            👇 拉下面的 slider，<strong>拉完手放開預覽會自動更新</strong>，不用按任何按鈕。
-          </p>
-
-          <!-- 4x2 視覺化示意圖 -->
-          <div class="bg-white border border-yellow-300 rounded p-2">
-            <div class="text-xs text-gray-600 mb-1.5">ChatGPT 給你的大圖永遠是這樣<strong class="text-yellow-700">（4 欄 × 2 列）</strong>，下面 slider 調的是中間 4 條切線：</div>
-            <div class="grid grid-cols-4 gap-0.5 max-w-[240px] mx-auto">
-              <div class="bg-yellow-100 aspect-square rounded text-sm flex items-center justify-center text-yellow-800 font-bold">1</div>
-              <div class="bg-yellow-100 aspect-square rounded text-sm flex items-center justify-center text-yellow-800 font-bold">2</div>
-              <div class="bg-yellow-100 aspect-square rounded text-sm flex items-center justify-center text-yellow-800 font-bold">3</div>
-              <div class="bg-yellow-100 aspect-square rounded text-sm flex items-center justify-center text-yellow-800 font-bold">4</div>
-              <div class="bg-yellow-100 aspect-square rounded text-sm flex items-center justify-center text-yellow-800 font-bold">5</div>
-              <div class="bg-yellow-100 aspect-square rounded text-sm flex items-center justify-center text-yellow-800 font-bold">6</div>
-              <div class="bg-yellow-100 aspect-square rounded text-sm flex items-center justify-center text-yellow-800 font-bold">7</div>
-              <div class="bg-yellow-100 aspect-square rounded text-sm flex items-center justify-center text-yellow-800 font-bold">8</div>
-            </div>
-            <div class="text-xs text-gray-500 mt-1.5 text-center">（手機預覽是 2 欄 4 列只是為了看清楚，實際切割位置都是針對上面的 4 欄 2 列大圖）</div>
-          </div>
-          <div class="space-y-2">
-            <div>
-              <div class="text-xs text-gray-600 mb-1">↕ 直向切線（從左到右 3 條，把畫面分成 4 欄）</div>
-              <label class="flex items-center gap-2"><span class="w-16 text-xs text-gray-500">第 1 條</span><input type="range" min="10" max="40" value="25" id="cutCol1" class="flex-1"><span id="cutCol1Val" class="w-12 text-xs text-right font-mono">25%</span></label>
-              <label class="flex items-center gap-2"><span class="w-16 text-xs text-gray-500">第 2 條</span><input type="range" min="35" max="65" value="50" id="cutCol2" class="flex-1"><span id="cutCol2Val" class="w-12 text-xs text-right font-mono">50%</span></label>
-              <label class="flex items-center gap-2"><span class="w-16 text-xs text-gray-500">第 3 條</span><input type="range" min="60" max="90" value="75" id="cutCol3" class="flex-1"><span id="cutCol3Val" class="w-12 text-xs text-right font-mono">75%</span></label>
-            </div>
-            <div>
-              <div class="text-xs text-gray-600 mb-1">↔ 橫向切線（中間 1 條，把畫面分成上下 2 列）</div>
-              <label class="flex items-center gap-2"><span class="w-16 text-xs text-gray-500">中間</span><input type="range" min="30" max="70" value="50" id="cutRow1" class="flex-1"><span id="cutRow1Val" class="w-12 text-xs text-right font-mono">50%</span></label>
-            </div>
-          </div>
-          <div class="flex gap-2 flex-wrap">
-            <button id="resetCutsBtn" class="px-3 py-1.5 bg-gray-200 hover:bg-gray-300 rounded-lg text-sm">↺ 還原預設</button>
-            <button id="autoCutsBtn" class="px-3 py-1.5 bg-blue-100 hover:bg-blue-200 rounded-lg text-sm text-blue-800">✨ 重新自動切</button>
+      <!-- 直觀拖曳切線：原圖 + 4 條紅色切線 -->
+      <div class="mb-4">
+        <div class="bg-yellow-50 border border-yellow-300 rounded-lg p-3 mb-2">
+          <div class="text-sm font-bold text-yellow-800 mb-1">🖐️ 直接用手指拖紅線調整切割位置</div>
+          <div class="text-xs text-gray-700">
+            下方原圖上的 <span class="text-red-500 font-bold">3 條直紅線 + 1 條橫紅線</span> 可以拖。拖到貼圖之間的空白縫隙就對了。
+            <strong>放開手指預覽自動更新。</strong>
           </div>
         </div>
-      </details>
+        <div id="cutCanvas" class="relative inline-block max-w-full select-none touch-none border border-gray-200 rounded-lg overflow-hidden bg-gray-100" style="line-height: 0;">
+          <img id="cutPreviewImg" class="block max-w-full h-auto" alt="" draggable="false">
+          <div class="cut-line cut-line-v" data-cut="cutCol1" style="left: 25%"></div>
+          <div class="cut-line cut-line-v" data-cut="cutCol2" style="left: 50%"></div>
+          <div class="cut-line cut-line-v" data-cut="cutCol3" style="left: 75%"></div>
+          <div class="cut-line cut-line-h" data-cut="cutRow1" style="top: 50%"></div>
+        </div>
+        <div class="flex gap-2 flex-wrap mt-2">
+          <button id="autoCutsBtn" class="px-3 py-1.5 bg-blue-100 hover:bg-blue-200 rounded-lg text-sm text-blue-800 font-semibold">✨ 重新自動智慧切</button>
+          <button id="resetCutsBtn" class="px-3 py-1.5 bg-gray-200 hover:bg-gray-300 rounded-lg text-sm">↺ 還原等分</button>
+        </div>
+      </div>
 
+      <!-- 切好的 8 張 -->
+      <div class="flex justify-between items-center mb-2 flex-wrap gap-2 pt-3 border-t">
+        <span class="text-sm font-medium text-gray-700">切好的 8 張（點縮圖下載單張）</span>
+        <button id="downloadZip" class="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 text-sm font-semibold">📦 全部打包下載 .zip</button>
+      </div>
       <div id="splitGrid" class="grid grid-cols-2 md:grid-cols-4 gap-2"></div>
+
+      <!-- 進階 slider 微調 -->
+      <details class="mt-3 bg-gray-50 border border-gray-200 rounded-lg">
+        <summary class="cursor-pointer p-3 text-xs text-gray-600">⚙️ 進階：用 slider 數字精確微調（一般人不用打開）</summary>
+        <div class="p-3 pt-0 space-y-2 text-sm">
+          <label class="flex items-center gap-2"><span class="w-20 text-xs text-gray-500">↕ 直線 1</span><input type="range" min="10" max="40" value="25" id="cutCol1" class="flex-1"><span id="cutCol1Val" class="w-12 text-xs text-right font-mono">25%</span></label>
+          <label class="flex items-center gap-2"><span class="w-20 text-xs text-gray-500">↕ 直線 2</span><input type="range" min="35" max="65" value="50" id="cutCol2" class="flex-1"><span id="cutCol2Val" class="w-12 text-xs text-right font-mono">50%</span></label>
+          <label class="flex items-center gap-2"><span class="w-20 text-xs text-gray-500">↕ 直線 3</span><input type="range" min="60" max="90" value="75" id="cutCol3" class="flex-1"><span id="cutCol3Val" class="w-12 text-xs text-right font-mono">75%</span></label>
+          <label class="flex items-center gap-2"><span class="w-20 text-xs text-gray-500">↔ 橫線</span><input type="range" min="30" max="70" value="50" id="cutRow1" class="flex-1"><span id="cutRow1Val" class="w-12 text-xs text-right font-mono">50%</span></label>
+        </div>
+      </details>
     </div>
   </section>
 
@@ -1733,6 +1745,52 @@ function setupSplitter() {
     splitInto4x2(lastImg, 'smart');
   };
 
+  // 直接拖紅線（mouse + touch）
+  document.querySelectorAll('.cut-line').forEach(line => {
+    const isVertical = line.classList.contains('cut-line-v');
+    const cutId = line.dataset.cut;
+    const slider = $(cutId);
+    let dragging = false;
+
+    const getPoint = e => e.touches ? e.touches[0] : e;
+    const onStart = e => {
+      if (!lastImg) return;
+      e.preventDefault();
+      dragging = true;
+      line.classList.add('dragging');
+    };
+    const onMove = e => {
+      if (!dragging) return;
+      e.preventDefault();
+      const point = getPoint(e);
+      const canvas = $('cutCanvas');
+      const rect = canvas.getBoundingClientRect();
+      let pct = isVertical
+        ? ((point.clientX - rect.left) / rect.width) * 100
+        : ((point.clientY - rect.top) / rect.height) * 100;
+      const min = parseInt(slider.min), max = parseInt(slider.max);
+      pct = Math.max(min, Math.min(max, Math.round(pct)));
+      slider.value = pct;
+      $(cutId + 'Val').textContent = pct + '%';
+      if (isVertical) line.style.left = pct + '%';
+      else line.style.top = pct + '%';
+    };
+    const onEnd = () => {
+      if (!dragging) return;
+      dragging = false;
+      line.classList.remove('dragging');
+      if (lastImg) splitInto4x2(lastImg, 'manual');
+    };
+
+    line.addEventListener('mousedown', onStart);
+    line.addEventListener('touchstart', onStart, { passive: false });
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('touchmove', onMove, { passive: false });
+    document.addEventListener('mouseup', onEnd);
+    document.addEventListener('touchend', onEnd);
+    document.addEventListener('touchcancel', onEnd);
+  });
+
   function findSmartCuts(img, cols, rows) {
     // 用空白(透明)行/列找切點，避開 GPT 排版不均的問題
     const W = img.naturalWidth, H = img.naturalHeight;
@@ -1797,8 +1855,17 @@ function setupSplitter() {
 
   let lastImg = null;
 
+  function syncLinePositions() {
+    document.querySelector('.cut-line[data-cut="cutCol1"]').style.left = $('cutCol1').value + '%';
+    document.querySelector('.cut-line[data-cut="cutCol2"]').style.left = $('cutCol2').value + '%';
+    document.querySelector('.cut-line[data-cut="cutCol3"]').style.left = $('cutCol3').value + '%';
+    document.querySelector('.cut-line[data-cut="cutRow1"]').style.top = $('cutRow1').value + '%';
+  }
+
   function splitInto4x2(img, mode) {
     lastImg = img;
+    // 把原圖放進 cutCanvas 當底圖
+    $('cutPreviewImg').src = img.src;
     const cols = 4, rows = 2;
     const W = img.naturalWidth, H = img.naturalHeight;
     let xCuts, yCuts;
@@ -1914,6 +1981,7 @@ function setupSplitter() {
       toast('已打包下載 8 張 PNG');
     };
 
+    syncLinePositions();
     toast(`已切成 ${cells.length} 張`);
     $('splitResult').scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
