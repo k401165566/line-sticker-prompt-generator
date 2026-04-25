@@ -23,30 +23,60 @@
 <style>
   /* === Toasty 烘焙坊 主題色票 ============================================ */
   :root {
-    --pal-bg: #fff5e8;
-    --pal-paper: #fffbf5;
-    --pal-cream: #fff5e8;
-    --pal-ink: #3a2418;
-    --pal-ink-soft: #7a5a48;
+    /* 主色 */
+    --orange: #ff8a3d;
+    --orange-deep: #ff7424;
+    --mango: #ffc845;
+    --cream: #fff5e8;
+    --cream-card: #fffbf5;
+    --choco: #3a2418;
+    --choco-soft: #6b4a30;
+    --mint: #7dd6a8;
+    --mint-bg: #e8f7ee;
+    --rose: #ff7a8a;
+
+    /* 邊線 / 陰影 */
+    --line: #f0e0c8;
+    --line-soft: #f6e8d2;
+    --shadow-card: 0 8px 24px rgba(74, 46, 30, 0.06);
+    --shadow-pop: 0 12px 32px rgba(255, 138, 61, 0.25);
+
+    /* 字 */
+    --font-zh: "Noto Sans TC", system-ui, sans-serif;
+    --font-en: "Plus Jakarta Sans", var(--font-zh);
+    --font-hand: "Caveat", cursive;
+
+    /* === 舊版別名（給既有 override 用，請勿在新樣式使用） === */
+    --pal-bg: var(--cream);
+    --pal-paper: var(--cream-card);
+    --pal-cream: var(--cream);
+    --pal-ink: var(--choco);
+    --pal-ink-soft: var(--choco-soft);
     --pal-ink-mute: #a89080;
-    --pal-orange: #ff8a3d;
-    --pal-orange-dark: #ff7a2e;
+    --pal-orange: var(--orange);
+    --pal-orange-dark: var(--orange-deep);
     --pal-orange-soft: #ffd9b8;
     --pal-orange-bg: #fff0e0;
-    --pal-mango: #ffc845;
+    --pal-mango: var(--mango);
     --pal-mango-soft: #fff0c2;
     --pal-mango-bg: #fff8e0;
-    --pal-mint: #7dd6a8;
-    --pal-mint-bg: #e8f7ee;
-    --pal-rose: #ff7a8a;
+    --pal-mint: var(--mint);
+    --pal-mint-bg: var(--mint-bg);
+    --pal-rose: var(--rose);
     --pal-rose-soft: #ffd4da;
     --pal-rose-bg: #fff0f2;
-    --pal-choco: #3a2418;
-    --pal-choco-light: #5a3e2e;
-    --font-main: "Plus Jakarta Sans", "Noto Sans TC", -apple-system, BlinkMacSystemFont, "Microsoft JhengHei", "PingFang TC", system-ui, sans-serif;
-    --font-hand: "Caveat", cursive;
+    --pal-choco: var(--choco);
+    --pal-choco-light: var(--choco-soft);
+    --font-main: var(--font-en);
   }
-  body { font-family: var(--font-main); }
+  body {
+    font-family: var(--font-en), var(--font-zh);
+    color: var(--choco);
+    background: var(--cream);
+    text-wrap: pretty;
+  }
+  /* 任何按鈕、tag、chip 一律不斷字 */
+  button, .btn, .chip, .tag, [class*="pill"] { white-space: nowrap; }
   .count-btn { padding: 0.75rem 1rem; border-radius: 0.75rem; background: #f3f4f6; font-weight: 600; transition: all 0.15s; border: 2px solid transparent; }
   .count-btn:hover { background: #e5e7eb; }
   .count-btn.active { background: #10b981; color: white; border-color: #059669; }
@@ -400,41 +430,377 @@
     white-space: nowrap;
     flex-shrink: 0;
   }
+
+  /* ====================================================================
+     B 方向 Toasty 組件 — Hero / Card / Uploader / Style / Count / Cat /
+     Chip / Sticky / Btn / Textarea / Step-num
+  ==================================================================== */
+
+  /* === Hero === */
+  .hero {
+    background:
+      radial-gradient(circle at 20% 30%, rgba(255, 200, 69, 0.55) 0%, transparent 45%),
+      radial-gradient(circle at 85% 75%, rgba(255, 122, 138, 0.35) 0%, transparent 45%),
+      var(--orange);
+    margin: -16px -16px 24px;
+    padding: 56px 32px 72px;
+    border-radius: 0 0 32px 32px;
+    position: relative;
+    overflow: hidden;
+    color: #fff;
+  }
+  @media (min-width: 768px) {
+    .hero { margin: -24px -24px 28px; }
+  }
+  .hero h1 {
+    font-size: clamp(36px, 5vw, 56px);
+    line-height: 1.15;
+    text-wrap: balance;
+    max-width: 560px;
+    color: #fff !important;
+    font-weight: 800;
+    margin: 0 !important;
+    letter-spacing: -1.2px;
+  }
+  .hero .hand { font-family: var(--font-hand); color: #fff5d4; font-weight: 700; }
+  .hero .sub {
+    color: rgba(255, 255, 255, 0.92) !important;
+    font-size: 16px !important;
+    max-width: 520px;
+    margin: 16px 0 0 !important;
+    line-height: 1.6;
+  }
+  .hero .badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: rgba(255, 255, 255, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    color: #fff;
+    padding: 6px 14px;
+    border-radius: 999px;
+    font-size: 13px; font-weight: 700;
+    margin-bottom: 20px;
+    backdrop-filter: blur(8px);
+  }
+  .hero-inner {
+    position: relative;
+    display: flex; align-items: center; gap: 28px;
+    flex-wrap: wrap; justify-content: center;
+    max-width: 1100px; margin: 0 auto;
+  }
+  .hero-text { flex: 1 1 320px; max-width: 600px; }
+  @keyframes toastyWaveB {
+    0%, 100% { transform: rotate(-3deg); }
+    50% { transform: rotate(3deg); }
+  }
+  .hero-mascot { animation: toastyWaveB 1.6s ease-in-out infinite; transform-origin: center bottom; flex-shrink: 0; }
+
+  /* === 通用卡片 === */
+  .card, .step-card, section.bg-white, section[id="splitterSection"] {
+    background: var(--cream-card) !important;
+    border: 1.5px solid var(--line) !important;
+    border-radius: 20px !important;
+    box-shadow: var(--shadow-card) !important;
+  }
+  /* 步驟編號圓點 */
+  .step-num {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    background: var(--mint);
+    color: var(--choco);
+    font-weight: 800; font-size: 17px;
+    display: inline-flex; align-items: center; justify-content: center;
+    margin-right: 12px;
+    flex-shrink: 0;
+    box-shadow: 0 2px 0 rgba(74,46,30,0.12);
+  }
+  .step-h2 {
+    display: flex; align-items: center; gap: 0;
+    font-size: 20px; font-weight: 800; color: var(--choco);
+    margin-bottom: 14px;
+  }
+
+  /* === 上傳區 === */
+  .uploader, #dropzone.uploader {
+    border: 2px dashed var(--orange) !important;
+    background: #fff8ed !important;
+    border-radius: 16px !important;
+    padding: 40px 20px !important;
+    text-align: center;
+    transition: background .2s, border-color .2s;
+  }
+  .uploader:hover, #dropzone.uploader:hover {
+    background: #fff0d8 !important;
+    border-color: var(--orange-deep) !important;
+  }
+
+  /* === 風格選擇 (.style-card 已存在) === */
+  .style-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 12px;
+  }
+  .style-card {
+    background: #fff !important;
+    border: 2px solid var(--line) !important;
+    border-radius: 16px !important;
+    padding: 16px !important;
+    cursor: pointer;
+    transition: all .15s !important;
+    position: relative;
+  }
+  .style-card:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: var(--shadow-card) !important;
+    border-color: var(--orange) !important;
+    background: #fff !important;
+  }
+  .style-card.active {
+    border-color: var(--orange) !important;
+    background: #fff5ea !important;
+    background-image: none !important;
+    box-shadow: 0 0 0 4px rgba(255, 138, 61, 0.15) !important;
+    color: var(--choco) !important;
+  }
+  .style-card.active .style-name,
+  .style-card.active .style-desc { color: var(--choco) !important; }
+  .style-card.active::after {
+    content: "✓";
+    position: absolute; top: 8px; right: 8px;
+    background: var(--orange); color: #fff;
+    width: 24px; height: 24px; border-radius: 50%;
+    display: grid; place-items: center;
+    font-size: 14px; font-weight: 800;
+  }
+
+  /* === 張數 segmented control === */
+  .count-group {
+    display: flex; gap: 8px; flex-wrap: wrap;
+    background: #fff;
+    border: 1.5px solid var(--line);
+    border-radius: 14px;
+    padding: 6px;
+  }
+  .count-group .count-btn {
+    flex: 1; min-width: 60px;
+    padding: 12px 16px !important;
+    border-radius: 10px !important;
+    background: transparent !important;
+    border: none !important;
+    color: var(--choco-soft) !important;
+    font-weight: 700 !important;
+  }
+  .count-group .count-btn:hover {
+    background: rgba(255,138,61,0.08) !important;
+  }
+  .count-group .count-btn.active {
+    background: var(--orange) !important;
+    color: #fff !important;
+    border-color: var(--orange) !important;
+    box-shadow: inset 0 -2px 0 rgba(0,0,0,0.1) !important;
+  }
+
+  /* === 文字勾選 accordion === */
+  .cat {
+    background: var(--cream-card);
+    border: 1.5px solid var(--line);
+    border-radius: 16px;
+    margin-bottom: 10px;
+    overflow: hidden;
+    transition: background .2s, border-color .2s;
+  }
+  .cat.open {
+    background: var(--mint-bg);
+    border-color: var(--mint);
+  }
+  .cat-head {
+    display: flex; align-items: center; gap: 12px;
+    padding: 14px 16px;
+    cursor: pointer;
+  }
+  .cat-icon {
+    width: 36px; height: 36px;
+    background: #fff;
+    border-radius: 50%;
+    display: grid; place-items: center;
+    font-size: 18px;
+    flex-shrink: 0;
+    box-shadow: 0 1px 3px rgba(74,46,30,0.06);
+  }
+  .cat-info { flex: 1; min-width: 0; }
+  .cat-name { font-weight: 700; font-size: 15px; color: var(--choco); }
+  .cat-count {
+    font-weight: 700; font-size: 13px;
+    color: var(--choco-soft);
+    flex-shrink: 0;
+  }
+  .cat.has-selection .cat-count { color: var(--orange); }
+  .cat-arrow {
+    color: var(--orange);
+    transition: transform .2s;
+    flex-shrink: 0;
+    font-size: 14px;
+  }
+  .cat.open .cat-arrow { transform: rotate(180deg); }
+  .cat-progress {
+    height: 4px;
+    background: var(--line-soft);
+    margin: 6px 0 0;
+    border-radius: 99px;
+    overflow: hidden;
+  }
+  .cat-progress-fill {
+    height: 100%;
+    width: 0%;
+    background: var(--orange);
+    border-radius: 99px;
+    transition: width .3s ease;
+  }
+  .cat-body {
+    padding: 0 16px 16px;
+    display: none;
+  }
+  .cat.open .cat-body { display: block; }
+  .cat-chips {
+    display: flex; flex-wrap: wrap; gap: 8px;
+    padding-top: 4px;
+  }
+  .cat-actions {
+    margin-top: 10px;
+    display: flex; gap: 8px;
+  }
+
+  /* === Chip（取代 phrase-chip 視覺，class 同存） === */
+  .chip, .phrase-chip.chip {
+    padding: 8px 14px;
+    border-radius: 999px;
+    background: #fff;
+    border: 1.5px solid var(--line);
+    font-size: 14px;
+    cursor: pointer;
+    transition: all .15s;
+    white-space: nowrap;
+    user-select: none;
+  }
+  .chip:hover, .phrase-chip.chip:hover {
+    border-color: var(--orange);
+    background: #fff5ea;
+  }
+  .chip.selected, .phrase-chip.chip.checked {
+    background: var(--orange) !important;
+    color: #fff !important;
+    border-color: var(--orange) !important;
+    box-shadow: 0 4px 10px rgba(255, 138, 61, 0.3) !important;
+  }
+  .chip.selected::before, .phrase-chip.chip.checked::before {
+    content: "✓ ";
+    font-weight: 700;
+  }
+  .phrase-chip.chip > span:first-child { flex: none; }
+  .phrase-chip.chip .phrase-action { display: none !important; }
+
+  /* === Sticky bar B 方向 === */
+  .sticky-bar {
+    background: rgba(255, 245, 232, 0.95) !important;
+    backdrop-filter: blur(10px);
+    border-top: 1.5px solid var(--line) !important;
+    padding: 12px 20px !important;
+  }
+
+  /* === btn 系列 === */
+  .btn-primary, button.btn-primary {
+    background: var(--orange) !important;
+    color: #fff !important;
+    border: none !important;
+    border-radius: 999px !important;
+    padding: 14px 28px !important;
+    font-weight: 800 !important;
+    font-size: 16px !important;
+    white-space: nowrap !important;
+    box-shadow: var(--shadow-pop), inset 0 -2px 0 rgba(0,0,0,0.12) !important;
+    cursor: pointer;
+    transition: background .15s, transform .15s !important;
+  }
+  .btn-primary:hover {
+    background: var(--orange-deep) !important;
+    transform: translateY(-1px) !important;
+  }
+  .btn-secondary {
+    background: #fff !important;
+    border: 1.5px solid var(--line) !important;
+    border-radius: 999px !important;
+    padding: 12px 20px !important;
+    white-space: nowrap !important;
+    color: var(--choco) !important;
+    font-weight: 700 !important;
+  }
+  .btn-secondary:hover {
+    background: var(--cream) !important;
+    border-color: var(--orange) !important;
+  }
+  .btn-ghost {
+    background: transparent !important;
+    border: 1.5px solid var(--choco) !important;
+    color: var(--choco) !important;
+    border-radius: 999px !important;
+    padding: 6px 14px !important;
+    font-size: 13px !important;
+    font-weight: 700 !important;
+    white-space: nowrap !important;
+  }
+  .btn-ghost:hover {
+    background: var(--choco) !important;
+    color: #fff !important;
+  }
+
+  /* === Textarea / Input === */
+  textarea, input[type="text"] {
+    background: #fff !important;
+    border: 1.5px solid var(--line) !important;
+    border-radius: 12px !important;
+    padding: 12px 14px !important;
+    font-family: inherit !important;
+    font-size: 14px !important;
+    color: var(--choco) !important;
+  }
+  textarea:focus, input[type="text"]:focus {
+    outline: none !important;
+    border-color: var(--orange) !important;
+    background: #fff !important;
+    box-shadow: 0 0 0 3px rgba(255, 138, 61, 0.15) !important;
+  }
 </style>
 </head>
 <body class="min-h-screen pb-52 md:pb-32">
 <div class="container mx-auto p-4 md:p-6 max-w-6xl">
 
-  <header class="toasty-hero">
-    <div class="toasty-sparkle" style="top: 50px; right: 10%; opacity: 0.7;">
-      <svg viewBox="0 0 20 20" width="22"><path d="M10 2 L11 9 L18 10 L11 11 L10 18 L9 11 L2 10 L9 9 Z" fill="#ffc845"/></svg>
-    </div>
-    <div class="toasty-sparkle" style="bottom: 30px; left: 35%; opacity: 0.6;">
-      <svg viewBox="0 0 20 20" width="14"><path d="M10 2 L11 9 L18 10 L11 11 L10 18 L9 11 L2 10 L9 9 Z" fill="#fff"/></svg>
-    </div>
-    <div class="toasty-hero-inner">
-      <div class="toasty-mascot" aria-hidden="true">
-        <!-- Toasty 吉祥物（吐司） -->
-        <svg viewBox="0 0 110 100" width="150" height="136">
-          <path d="M 20 30 Q 18 18 30 18 L 80 18 Q 92 18 90 30 L 92 80 Q 92 88 82 88 L 28 88 Q 18 88 18 80 Z"
-            fill="#ffc845" stroke="#3a2418" stroke-width="2.5" stroke-linejoin="round"/>
-          <path d="M 28 36 Q 28 28 36 28 L 76 28 Q 84 28 84 36 L 84 78 Q 84 84 78 84 L 32 84 Q 28 84 28 78 Z"
-            fill="#fff0c2" stroke="#3a2418" stroke-width="1.5"/>
-          <ellipse cx="46" cy="55" rx="3" ry="3.5" fill="#3a2418"/>
-          <ellipse cx="66" cy="55" rx="3" ry="3.5" fill="#3a2418"/>
-          <path d="M 48 67 Q 56 73 64 67" stroke="#3a2418" stroke-width="2.5" fill="none" stroke-linecap="round"/>
-          <ellipse cx="38" cy="64" rx="4" ry="2.5" fill="#ff7a8a" opacity="0.65"/>
-          <ellipse cx="74" cy="64" rx="4" ry="2.5" fill="#ff7a8a" opacity="0.65"/>
-          <g>
-            <path d="M 88 50 Q 100 38 96 28" stroke="#3a2418" stroke-width="2.5" fill="#ffc845" stroke-linejoin="round"/>
-            <circle cx="96" cy="28" r="6" fill="#ffc845" stroke="#3a2418" stroke-width="2.5"/>
-          </g>
+  <header class="hero">
+    <div class="hero-inner">
+      <div class="hero-mascot" aria-hidden="true">
+        <svg viewBox="0 0 200 200" width="160" height="160">
+          <!-- 馬克杯把手 -->
+          <path d="M 30 80 Q 8 80 8 110 Q 8 140 30 140"
+                fill="none" stroke="#3a2418" stroke-width="4" stroke-linecap="round"/>
+          <!-- 吐司身體 -->
+          <rect x="30" y="40" width="140" height="130" rx="22"
+                fill="#ffd9a8" stroke="#3a2418" stroke-width="4"/>
+          <!-- 烤過的虛線邊 -->
+          <rect x="38" y="48" width="124" height="114" rx="16"
+                fill="none" stroke="#c97a3a" stroke-width="2" stroke-dasharray="3 5" opacity="0.65"/>
+          <!-- 眼睛 -->
+          <circle cx="78" cy="100" r="5" fill="#3a2418"/>
+          <circle cx="122" cy="100" r="5" fill="#3a2418"/>
+          <!-- 腮紅 -->
+          <ellipse cx="68" cy="118" rx="9" ry="5" fill="#ff9aa8" opacity="0.7"/>
+          <ellipse cx="132" cy="118" rx="9" ry="5" fill="#ff9aa8" opacity="0.7"/>
+          <!-- 嘴 -->
+          <path d="M 88 120 Q 100 132 112 120" fill="none"
+                stroke="#3a2418" stroke-width="3" stroke-linecap="round"/>
         </svg>
       </div>
-      <div class="toasty-hero-text">
-        <div class="pill">🍞 Powered by Toasty</div>
+      <div class="hero-text">
+        <div class="badge">🍞 Powered by Toasty</div>
         <h1>LINE 貼圖指令產生器 <span class="hand">🧈</span></h1>
-        <p>上傳合照 → 5 步驟產生 ChatGPT 提示詞，把照片烤成可上架 LINE 的貼圖組</p>
+        <p class="sub">上傳合照 → 5 步驟產生 ChatGPT 提示詞，把照片烤成可上架 LINE 的貼圖組</p>
       </div>
     </div>
   </header>
@@ -480,11 +846,11 @@
 
   <!-- Step 1 -->
   <section class="bg-white rounded-2xl shadow-md p-5 md:p-6 mb-5">
-    <h2 class="text-lg md:text-xl font-bold mb-3">1️⃣ 上傳參考照片（可多張）</h2>
+    <h2 class="text-lg md:text-xl font-bold mb-3 flex items-center"><span class="step-num">1</span> 上傳參考照片（可多張）</h2>
     <p class="text-sm text-gray-600 mb-3">
       💡 <strong>建議上傳 3-10 張不同表情/姿勢的照片</strong>，AI 會依每個情緒挑最合適的當素材。例：笑、驚訝、害羞各拍一張 → 比只給一張效果好非常多，不會出現「假笑」「眼睛變白」這類臉部走樣問題。
     </p>
-    <div id="dropzone" class="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center hover:border-green-400 cursor-pointer transition bg-gray-50">
+    <div id="dropzone" class="uploader border-2 border-dashed border-gray-300 rounded-xl p-6 text-center cursor-pointer transition">
       <input type="file" id="imageInput" accept="image/*" multiple class="hidden">
       <div id="uploadHint">
         <div class="text-5xl mb-2">📁</div>
@@ -505,15 +871,15 @@
 
   <!-- Step 2: Style -->
   <section class="bg-white rounded-2xl shadow-md p-5 md:p-6 mb-5">
-    <h2 class="text-lg md:text-xl font-bold mb-3">2️⃣ 選擇貼圖風格</h2>
+    <h2 class="text-lg md:text-xl font-bold mb-3 flex items-center"><span class="step-num">2</span> 選擇貼圖風格</h2>
     <p class="text-xs md:text-sm text-gray-500 mb-3">不同風格產出來差很多，依你上傳的圖選最合適的（真人照片建議用第一個）</p>
-    <div id="styleGrid" class="grid grid-cols-2 md:grid-cols-3 gap-3"></div>
+    <div id="styleGrid" class="style-grid"></div>
   </section>
 
   <!-- Step 3: Count + Mode -->
   <section class="bg-white rounded-2xl shadow-md p-5 md:p-6 mb-5">
-    <h2 class="text-lg md:text-xl font-bold mb-3">3️⃣ 選擇張數</h2>
-    <div class="grid grid-cols-5 gap-2 md:gap-3">
+    <h2 class="text-lg md:text-xl font-bold mb-3 flex items-center"><span class="step-num">3</span> 選擇張數</h2>
+    <div class="count-group">
       <button class="count-btn" data-count="8">8 張</button>
       <button class="count-btn active" data-count="16">16 張</button>
       <button class="count-btn" data-count="24">24 張</button>
@@ -543,22 +909,20 @@
     </div>
   </section>
 
-  <!-- Step 4: Phrases -->
+  <!-- Step 4: Phrases (accordion) -->
   <section class="bg-white rounded-2xl shadow-md p-5 md:p-6 mb-5">
-    <div class="flex flex-wrap items-center justify-between mb-3 gap-2">
-      <h2 class="text-lg md:text-xl font-bold">4️⃣ 勾選文字內容（共 500+ 句）</h2>
-      <div class="flex gap-2 text-sm">
-        <button id="selectAllCat" class="px-3 py-1 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200">全選此類</button>
-        <button id="clearCat" class="px-3 py-1 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200">清空此類</button>
-      </div>
-    </div>
-    <div id="tabBtns" class="flex flex-wrap gap-2 mb-4 pb-3 border-b"></div>
-    <div id="tabContents"></div>
+    <h2 class="text-lg md:text-xl font-bold flex items-center mb-3"><span class="step-num">4</span> 勾選文字內容（共 500+ 句）</h2>
+    <div id="catList"></div>
+    <!-- legacy IDs for back-compat (hidden, not used) -->
+    <div id="tabBtns" class="hidden"></div>
+    <div id="tabContents" class="hidden"></div>
+    <button id="selectAllCat" class="hidden"></button>
+    <button id="clearCat" class="hidden"></button>
   </section>
 
   <!-- Step 5: Custom -->
   <section class="bg-white rounded-2xl shadow-md p-5 md:p-6 mb-5">
-    <h2 class="text-lg md:text-xl font-bold mb-3">5️⃣ 自訂文字（選填）</h2>
+    <h2 class="text-lg md:text-xl font-bold mb-3 flex items-center"><span class="step-num">5</span> 自訂文字（選填）</h2>
     <textarea id="customText" rows="4" placeholder="一行一句，例如：&#10;我餓了&#10;週一憂鬱&#10;咖啡時間" class="w-full p-3 border border-gray-300 rounded-lg focus:border-green-400 focus:ring-1 focus:ring-green-400 outline-none font-mono text-sm"></textarea>
     <p class="text-xs text-gray-500 mt-1">這些會加進去你的勾選總數裡。AI 會自己想對應動作。</p>
   </section>
@@ -704,21 +1068,19 @@
 </div>
 
 <!-- Sticky Bottom Bar -->
-<div class="fixed bottom-0 left-0 right-0 bg-white shadow-2xl border-t border-gray-200 p-3 md:p-4 z-50">
+<div class="fixed bottom-0 left-0 right-0 sticky-bar shadow-2xl z-50">
   <div class="container mx-auto max-w-6xl flex flex-col md:flex-row md:items-center gap-2 md:gap-4">
-    <!-- 計數行：永遠單行 inline -->
     <div class="flex items-center gap-2 md:gap-3 flex-1 min-w-0 overflow-x-auto">
-      <span class="font-bold text-sm md:text-base whitespace-nowrap flex-shrink-0">
-        已選 <span id="selectedCount" class="text-green-600 text-lg">0</span><span class="text-gray-400 mx-1">/</span><span id="targetCount" class="text-blue-600">16</span> 句
+      <span class="font-bold text-sm md:text-base whitespace-nowrap flex-shrink-0" style="color: var(--choco);">
+        已選 <span id="selectedCount" style="color: var(--orange); font-size: 18px;">0</span><span class="mx-1" style="color: var(--choco-soft);">/</span><span id="targetCount" style="color: var(--choco);">16</span> 句
       </span>
       <span id="statusHint" class="text-xs md:text-sm whitespace-nowrap flex-shrink-0"></span>
       <div class="flex gap-2 ml-auto flex-shrink-0">
-        <button id="randomFill" class="px-3 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 text-sm font-semibold whitespace-nowrap">🎲 補滿</button>
-        <button id="clearAll" class="px-3 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 text-sm font-semibold whitespace-nowrap">🧹 清空</button>
+        <button id="randomFill" class="btn-secondary text-sm">🎲 補滿</button>
+        <button id="clearAll" class="btn-secondary text-sm">🧹 清空</button>
       </div>
     </div>
-    <!-- 生成按鈕 -->
-    <button id="generate" class="w-full md:w-auto px-5 md:px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-500 text-white text-base md:text-lg font-bold rounded-xl shadow-lg hover:from-green-600 hover:to-emerald-600 transition whitespace-nowrap flex-shrink-0">
+    <button id="generate" class="btn-primary w-full md:w-auto flex-shrink-0">
       🚀 生成 Prompt
     </button>
   </div>
@@ -1334,39 +1696,66 @@ const tabContents = $('tabContents');
 // 初始化 Tabs
 // ============================================================
 function buildTabs() {
+  const list = $('catList');
+  if (!list) return;
+  list.innerHTML = '';
   Object.entries(PHRASES).forEach(([key, cat], idx) => {
-    const btn = document.createElement('button');
-    btn.className = 'tab-btn' + (idx === 0 ? ' active' : '');
-    btn.dataset.tab = key;
-    btn.innerHTML = `${cat.icon} ${cat.name} <span class="tab-count text-xs opacity-70" data-cat="${key}">(0/${cat.items.length})</span>`;
-    btn.onclick = () => switchTab(key);
-    tabBtns.appendChild(btn);
+    const wrap = document.createElement('div');
+    wrap.className = 'cat' + (idx === 0 ? ' open' : '');
+    wrap.dataset.cat = key;
+    wrap.innerHTML = `
+      <div class="cat-head">
+        <div class="cat-icon">${cat.icon}</div>
+        <div class="cat-info">
+          <div class="cat-name">${cat.name}</div>
+          <div class="cat-progress"><div class="cat-progress-fill" data-cat-progress="${key}"></div></div>
+        </div>
+        <div class="cat-count" data-cat="${key}">0/${cat.items.length}</div>
+        <div class="cat-arrow">▾</div>
+      </div>
+      <div class="cat-body">
+        <div class="cat-chips"></div>
+        <div class="cat-actions">
+          <button class="btn-ghost cat-select-all">全選此類</button>
+          <button class="btn-ghost cat-clear">清空</button>
+        </div>
+      </div>
+    `;
+    wrap.querySelector('.cat-head').onclick = () => switchTab(key);
 
-    const content = document.createElement('div');
-    content.className = 'tab-content' + (idx === 0 ? '' : ' hidden');
-    content.dataset.tab = key;
-    const grid = document.createElement('div');
-    grid.className = 'grid grid-cols-2 md:grid-cols-3 gap-2';
+    const chipsBox = wrap.querySelector('.cat-chips');
     cat.items.forEach(item => {
       const chip = document.createElement('div');
-      chip.className = 'phrase-chip';
+      chip.className = 'phrase-chip chip';
       chip.dataset.text = item.text;
       chip.dataset.action = item.action;
       chip.dataset.cat = key;
-      chip.innerHTML = `
-        <span class="font-medium">${item.text}</span>
-        <span class="phrase-action" title="${item.action}">${item.action}</span>
-      `;
+      chip.innerHTML = `<span class="font-medium">${item.text}</span><span class="phrase-action" title="${item.action}">${item.action}</span>`;
       chip.onclick = () => toggleChip(chip);
-      grid.appendChild(chip);
+      chipsBox.appendChild(chip);
     });
-    content.appendChild(grid);
-    tabContents.appendChild(content);
+
+    wrap.querySelector('.cat-select-all').onclick = (e) => {
+      e.stopPropagation();
+      cat.items.forEach(i => state.selected.add(i.text));
+      wrap.querySelectorAll('.phrase-chip').forEach(c => c.classList.add('checked'));
+      updateCounts();
+    };
+    wrap.querySelector('.cat-clear').onclick = (e) => {
+      e.stopPropagation();
+      cat.items.forEach(i => state.selected.delete(i.text));
+      wrap.querySelectorAll('.phrase-chip').forEach(c => c.classList.remove('checked'));
+      updateCounts();
+    };
+
+    list.appendChild(wrap);
   });
 }
 
 function switchTab(key) {
   state.currentTab = key;
+  document.querySelectorAll('.cat').forEach(c => c.classList.toggle('open', c.dataset.cat === key));
+  // 舊 tab UI 兼容（沒元素也無妨）
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === key));
   document.querySelectorAll('.tab-content').forEach(c => c.classList.toggle('hidden', c.dataset.tab !== key));
 }
@@ -1385,12 +1774,20 @@ function toggleChip(chip) {
 
 function updateCounts() {
   $('selectedCount').textContent = state.selected.size + getCustomLines().length;
-  // 各 tab 計數
+  // 各 cat 計數 + 進度條 + has-selection
   Object.keys(PHRASES).forEach(key => {
     const total = PHRASES[key].items.length;
     const selected = PHRASES[key].items.filter(i => state.selected.has(i.text)).length;
-    const span = document.querySelector(`.tab-count[data-cat="${key}"]`);
-    if (span) span.textContent = `(${selected}/${total})`;
+    // 新版 cat
+    const cnt = document.querySelector(`.cat-count[data-cat="${key}"]`);
+    if (cnt) cnt.textContent = `${selected}/${total}`;
+    const fill = document.querySelector(`.cat-progress-fill[data-cat-progress="${key}"]`);
+    if (fill) fill.style.width = (total ? selected / total * 100 : 0) + '%';
+    const wrap = document.querySelector(`.cat[data-cat="${key}"]`);
+    if (wrap) wrap.classList.toggle('has-selection', selected > 0);
+    // 舊 tab-count 兼容
+    const old = document.querySelector(`.tab-count[data-cat="${key}"]`);
+    if (old) old.textContent = `(${selected}/${total})`;
   });
   // 狀態提示
   const total = state.selected.size + getCustomLines().length;
@@ -1493,12 +1890,15 @@ function setupCountBtns() {
 // 全選 / 清空（當前類）
 // ============================================================
 function setupCatBtns() {
-  $('selectAllCat').onclick = () => {
+  // 上方總按鈕已被 accordion 內按鈕取代；保留 null guard 避免崩潰
+  const a = $('selectAllCat');
+  const b = $('clearCat');
+  if (a) a.onclick = () => {
     PHRASES[state.currentTab].items.forEach(i => state.selected.add(i.text));
     document.querySelectorAll(`.phrase-chip[data-cat="${state.currentTab}"]`).forEach(c => c.classList.add('checked'));
     updateCounts();
   };
-  $('clearCat').onclick = () => {
+  if (b) b.onclick = () => {
     PHRASES[state.currentTab].items.forEach(i => state.selected.delete(i.text));
     document.querySelectorAll(`.phrase-chip[data-cat="${state.currentTab}"]`).forEach(c => c.classList.remove('checked'));
     updateCounts();
