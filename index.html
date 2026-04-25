@@ -190,10 +190,30 @@
       </div>
     </div>
     <div id="splitResult" class="hidden mt-4">
-      <div class="flex justify-between items-center mb-3">
+      <div class="flex justify-between items-center mb-3 flex-wrap gap-2">
         <span class="text-sm font-medium text-gray-700">切好的 8 張預覽（點縮圖可下載單張）</span>
         <button id="downloadZip" class="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 text-sm font-semibold">📦 全部打包下載 .zip</button>
       </div>
+
+      <!-- Manual cut adjust -->
+      <details class="mb-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+        <summary class="cursor-pointer p-3 font-medium text-sm text-yellow-800">🛠 手動微調切點（如果切到貼圖請打開）</summary>
+        <div class="p-3 pt-0 space-y-2 text-sm">
+          <p class="text-xs text-gray-600">調整下面 4 個切點（顯示為橫線/直線位置百分比，預設等分）後按「重新切」。預覽會即時更新。</p>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+            <label class="flex items-center gap-2"><span class="w-24 text-xs">直線 1 (col)</span><input type="range" min="10" max="40" value="25" id="cutCol1" class="flex-1"><span id="cutCol1Val" class="w-10 text-xs text-right">25%</span></label>
+            <label class="flex items-center gap-2"><span class="w-24 text-xs">直線 2 (col)</span><input type="range" min="35" max="65" value="50" id="cutCol2" class="flex-1"><span id="cutCol2Val" class="w-10 text-xs text-right">50%</span></label>
+            <label class="flex items-center gap-2"><span class="w-24 text-xs">直線 3 (col)</span><input type="range" min="60" max="90" value="75" id="cutCol3" class="flex-1"><span id="cutCol3Val" class="w-10 text-xs text-right">75%</span></label>
+            <label class="flex items-center gap-2"><span class="w-24 text-xs">橫線 (row)</span><input type="range" min="30" max="70" value="50" id="cutRow1" class="flex-1"><span id="cutRow1Val" class="w-10 text-xs text-right">50%</span></label>
+          </div>
+          <div class="flex gap-2 mt-2">
+            <button id="reSplitBtn" class="px-3 py-1.5 bg-yellow-400 hover:bg-yellow-500 rounded-lg text-sm font-bold text-gray-900">🔄 重新切</button>
+            <button id="resetCutsBtn" class="px-3 py-1.5 bg-gray-200 hover:bg-gray-300 rounded-lg text-sm">↺ 還原預設</button>
+            <button id="autoCutsBtn" class="px-3 py-1.5 bg-blue-100 hover:bg-blue-200 rounded-lg text-sm text-blue-800">✨ 自動智慧切</button>
+          </div>
+        </div>
+      </details>
+
       <div id="splitGrid" class="grid grid-cols-4 gap-2"></div>
     </div>
   </section>
@@ -903,8 +923,10 @@ function buildBatchPrompt({ phrases, photos, charDesc, styleId, batchIndex, batc
     `- Cell positions:`,
     `    Top row L→R:    Cell 1 | Cell 2 | Cell 3 | Cell 4`,
     `    Bottom row L→R: Cell 5 | Cell 6 | Cell 7 | Cell 8`,
-    `- Background between and around cells: FULLY TRANSPARENT (alpha PNG). No visible borders, gridlines, frames, or numbering on the output.`,
-    `- Each cell's sticker stays inside its cell area with ≥10px internal padding. Stickers do not overlap cell boundaries.`,
+    `- ⚠️ CRITICAL — CELL SEPARATION (this is non-negotiable): Between adjacent cells there MUST be a clear FULLY ALPHA-TRANSPARENT gap of at least 60 pixels (or ≥5% of canvas dimension). The gaps form a clean cross dividing the 4×2 layout. This transparent gutter is essential — a downstream tool will use it to slice each sticker out cleanly.`,
+    `- The transparent gutter MUST be 100% alpha-zero — NO faint background tint, NO paper texture, NO line work, NO decorations, NO drop shadows, NO sparkles spilling into the gutter zone.`,
+    `- Each sticker stays well inside its cell with ≥15px additional internal padding away from the gutter. Stickers do NOT touch or overlap cell boundaries. Decorations, outlines, and shadows for one sticker must NOT extend into a neighboring cell.`,
+    `- Background everywhere outside the stickers (gutters, page edges): FULLY TRANSPARENT (alpha PNG). No visible borders, gridlines, frames, numbering, or watermarks.`,
     ``,
     styleBlock(styleId),
     charLine,
@@ -1219,6 +1241,34 @@ function setupSplitter() {
     reader.readAsDataURL(file);
   }
 
+  // Slider 即時更新顯示值
+  ['cutCol1', 'cutCol2', 'cutCol3', 'cutRow1'].forEach(id => {
+    const el = $(id);
+    if (!el) return;
+    el.oninput = () => {
+      $(id + 'Val').textContent = el.value + '%';
+    };
+  });
+  // 重新切按鈕
+  $('reSplitBtn').onclick = () => {
+    if (!lastImg) { toast('請先上傳大圖'); return; }
+    splitInto4x2(lastImg, 'manual');
+  };
+  // 還原預設
+  $('resetCutsBtn').onclick = () => {
+    const defaults = { cutCol1: 25, cutCol2: 50, cutCol3: 75, cutRow1: 50 };
+    Object.entries(defaults).forEach(([id, v]) => {
+      $(id).value = v;
+      $(id + 'Val').textContent = v + '%';
+    });
+    if (lastImg) splitInto4x2(lastImg, 'manual');
+  };
+  // 重新自動智慧切
+  $('autoCutsBtn').onclick = () => {
+    if (!lastImg) { toast('請先上傳大圖'); return; }
+    splitInto4x2(lastImg, 'smart');
+  };
+
   function findSmartCuts(img, cols, rows) {
     // 用空白(透明)行/列找切點，避開 GPT 排版不均的問題
     const W = img.naturalWidth, H = img.naturalHeight;
@@ -1281,21 +1331,46 @@ function setupSplitter() {
     return { xCuts, yCuts };
   }
 
-  function splitInto4x2(img) {
+  let lastImg = null;
+
+  function splitInto4x2(img, mode) {
+    lastImg = img;
     const cols = 4, rows = 2;
-    const smart = findSmartCuts(img, cols, rows);
+    const W = img.naturalWidth, H = img.naturalHeight;
     let xCuts, yCuts;
-    if (smart) {
-      xCuts = smart.xCuts;
-      yCuts = smart.yCuts;
-      toast('用智慧切圖（找透明空白切點）');
+
+    if (mode === 'manual') {
+      const c1 = parseInt($('cutCol1').value) / 100;
+      const c2 = parseInt($('cutCol2').value) / 100;
+      const c3 = parseInt($('cutCol3').value) / 100;
+      const r1 = parseInt($('cutRow1').value) / 100;
+      xCuts = [0, Math.round(W * c1), Math.round(W * c2), Math.round(W * c3), W];
+      yCuts = [0, Math.round(H * r1), H];
+    } else if (mode === 'smart') {
+      const smart = findSmartCuts(img, cols, rows);
+      if (smart) {
+        xCuts = smart.xCuts;
+        yCuts = smart.yCuts;
+        // 同步 slider 到實際切點百分比
+        const setSlider = (id, valId, pct) => {
+          const el = $(id); el.value = pct; $(valId).textContent = pct + '%';
+        };
+        setSlider('cutCol1', 'cutCol1Val', Math.round(smart.xCuts[1] / W * 100));
+        setSlider('cutCol2', 'cutCol2Val', Math.round(smart.xCuts[2] / W * 100));
+        setSlider('cutCol3', 'cutCol3Val', Math.round(smart.xCuts[3] / W * 100));
+        setSlider('cutRow1', 'cutRow1Val', Math.round(smart.yCuts[1] / H * 100));
+        toast('用智慧切圖（找透明空白切點）');
+      } else {
+        // fallback: 等分
+        const cellW = Math.floor(W / cols);
+        const cellH = Math.floor(H / rows);
+        xCuts = [0, cellW, cellW * 2, cellW * 3, W];
+        yCuts = [0, cellH, H];
+        toast('找不到清楚的切點，用等分切（請手動微調切點）', 3500);
+      }
     } else {
-      // fallback: 等分切
-      const cellW = Math.floor(img.naturalWidth / cols);
-      const cellH = Math.floor(img.naturalHeight / rows);
-      xCuts = [0, cellW, cellW * 2, cellW * 3, img.naturalWidth];
-      yCuts = [0, cellH, img.naturalHeight];
-      toast('找不到清楚的切點，用等分切（可能會切到貼圖）', 3000);
+      // 第一次:先試智慧,失敗再等分
+      return splitInto4x2(img, 'smart');
     }
 
     const cells = [];
