@@ -22,6 +22,12 @@
   .result-card pre { white-space: pre-wrap; word-break: break-word; font-size: 0.85rem; line-height: 1.5; }
   details > summary { cursor: pointer; user-select: none; }
   details > summary::-webkit-details-marker { display: none; }
+  .style-card { padding: 1rem; border-radius: 0.75rem; border: 2px solid #e5e7eb; cursor: pointer; transition: all 0.15s; background: white; }
+  .style-card:hover { border-color: #10b981; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(16,185,129,0.15); }
+  .style-card.active { border-color: #059669; background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%); box-shadow: 0 4px 12px rgba(16,185,129,0.25); }
+  .style-card .style-icon { font-size: 1.75rem; }
+  .style-card .style-name { font-weight: 700; color: #111827; }
+  .style-card .style-desc { font-size: 0.75rem; color: #6b7280; line-height: 1.4; margin-top: 0.25rem; }
 </style>
 </head>
 <body class="bg-gradient-to-br from-green-50 via-blue-50 to-purple-50 min-h-screen pb-32">
@@ -51,9 +57,16 @@
     </div>
   </section>
 
-  <!-- Step 2 -->
+  <!-- Step 2: Style -->
   <section class="bg-white rounded-2xl shadow-md p-5 md:p-6 mb-5">
-    <h2 class="text-lg md:text-xl font-bold mb-3">2️⃣ 選擇張數</h2>
+    <h2 class="text-lg md:text-xl font-bold mb-3">2️⃣ 選擇貼圖風格</h2>
+    <p class="text-xs md:text-sm text-gray-500 mb-3">不同風格產出來差很多，依你上傳的圖選最合適的（真人照片建議用第一個）</p>
+    <div id="styleGrid" class="grid grid-cols-2 md:grid-cols-3 gap-3"></div>
+  </section>
+
+  <!-- Step 3: Count -->
+  <section class="bg-white rounded-2xl shadow-md p-5 md:p-6 mb-5">
+    <h2 class="text-lg md:text-xl font-bold mb-3">3️⃣ 選擇張數</h2>
     <div class="grid grid-cols-5 gap-2 md:gap-3">
       <button class="count-btn" data-count="8">8 張</button>
       <button class="count-btn active" data-count="16">16 張</button>
@@ -64,10 +77,10 @@
     <p class="text-xs md:text-sm text-gray-500 mt-3">⚠️ 系統會自動多生 2 段（240×240 主圖 + 96×74 聊天標籤），LINE 上架必備</p>
   </section>
 
-  <!-- Step 3 -->
+  <!-- Step 4: Phrases -->
   <section class="bg-white rounded-2xl shadow-md p-5 md:p-6 mb-5">
     <div class="flex flex-wrap items-center justify-between mb-3 gap-2">
-      <h2 class="text-lg md:text-xl font-bold">3️⃣ 勾選文字內容（共 200 句）</h2>
+      <h2 class="text-lg md:text-xl font-bold">4️⃣ 勾選文字內容（共 200 句）</h2>
       <div class="flex gap-2 text-sm">
         <button id="selectAllCat" class="px-3 py-1 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200">全選此類</button>
         <button id="clearCat" class="px-3 py-1 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200">清空此類</button>
@@ -77,9 +90,9 @@
     <div id="tabContents"></div>
   </section>
 
-  <!-- Step 4 -->
+  <!-- Step 5: Custom -->
   <section class="bg-white rounded-2xl shadow-md p-5 md:p-6 mb-5">
-    <h2 class="text-lg md:text-xl font-bold mb-3">4️⃣ 自訂文字（選填）</h2>
+    <h2 class="text-lg md:text-xl font-bold mb-3">5️⃣ 自訂文字（選填）</h2>
     <textarea id="customText" rows="4" placeholder="一行一句，例如：&#10;我餓了&#10;週一憂鬱&#10;咖啡時間" class="w-full p-3 border border-gray-300 rounded-lg focus:border-green-400 focus:ring-1 focus:ring-green-400 outline-none font-mono text-sm"></textarea>
     <p class="text-xs text-gray-500 mt-1">這些會加進去你的勾選總數裡。AI 會自己想對應動作。</p>
   </section>
@@ -120,6 +133,43 @@
 <div id="toast" class="fixed top-4 left-1/2 -translate-x-1/2 bg-gray-900 text-white px-5 py-3 rounded-xl shadow-2xl opacity-0 pointer-events-none transition-opacity z-50 text-sm"></div>
 
 <script>
+// ============================================================
+// 6 種貼圖風格
+// ============================================================
+const STYLES = {
+  photo: {
+    name: '真人去背拼貼風',
+    icon: '📸',
+    desc: '保留真人照片，去背 + 白描邊 + 手寫字 + 小裝飾',
+    default: true,
+  },
+  chibi: {
+    name: 'Q 版卡通重繪',
+    icon: '🧸',
+    desc: '把人物重新畫成大頭小身的可愛 Q 版卡通',
+  },
+  kawaii: {
+    name: '可愛貼紙風',
+    icon: '🌸',
+    desc: '厚黑線條 + 鮮豔色彩 + 圓潤平塗的貼紙感',
+  },
+  doodle: {
+    name: '手繪塗鴉風',
+    icon: '✏️',
+    desc: '隨性鉛筆 / 麥克筆塗鴉，像筆記本上的隨手畫',
+  },
+  pixel: {
+    name: '像素風',
+    icon: '👾',
+    desc: '復古 16-bit 電玩像素畫風（GBA / SNES 風）',
+  },
+  watercolor: {
+    name: '水彩插畫風',
+    icon: '🎨',
+    desc: '柔和水彩暈染 + 細線條，文青手繪感',
+  },
+};
+
 // ============================================================
 // 200 個文字模板 + 動作描述（英文）
 // ============================================================
@@ -352,6 +402,7 @@ const state = {
   currentTab: 'greeting',
   selected: new Set(),
   imageDataUrl: null,
+  selectedStyle: 'photo',
 };
 
 // ============================================================
@@ -540,68 +591,148 @@ function shuffle(arr) {
 // ============================================================
 // 生成 Prompt
 // ============================================================
-function buildPrompt({ text, action, isMain, isTab, charDesc }) {
+// ============================================================
+// 風格描述（共用結構）
+// ============================================================
+function styleBlock(styleId) {
+  const blocks = {
+    photo: [
+      `STYLE — Photo Cutout Collage:`,
+      `- USE THE ATTACHED PHOTO DIRECTLY. DO NOT redraw, illustrate, or transform the subjects into cartoons. Preserve the actual faces, clothing, and original photo lighting EXACTLY as in the source.`,
+      `- Cleanly cut out the subject(s) from the original background.`,
+      `- Add a thick (5-7px) WHITE sticker-style outline around the cut-out subject, plus a soft drop shadow.`,
+      `- Background must be fully transparent PNG.`,
+      `- This is LINE-Custom-Sticker style: real photo + outline + decorations + handwritten text.`,
+    ],
+    chibi: [
+      `STYLE — Q-version Chibi Cartoon:`,
+      `- REDRAW the reference subject(s) into Q-version chibi cartoon style.`,
+      `- Big head, small body proportions (1:1.5 head-to-body), large round expressive eyes, simplified rounded features.`,
+      `- Thick clean black outlines, flat colors with simple cel shading.`,
+      `- Maintain recognizable identity from reference: same hairstyle, hair color, skin tone, key clothing colors, accessories (glasses, etc.).`,
+    ],
+    kawaii: [
+      `STYLE — Cute Kawaii Sticker:`,
+      `- Bold thick black outlines (5-7px), saturated bright candy colors, flat fills with minimal shading.`,
+      `- Exaggerated cute expressions, simplified rounded shapes.`,
+      `- Pop pastel + vibrant palette, glossy sticker feel.`,
+      `- Maintain recognizable features from reference (hairstyle, key clothing colors, accessories).`,
+    ],
+    doodle: [
+      `STYLE — Hand-drawn Doodle:`,
+      `- Loose pencil / felt-tip marker line work with slightly imperfect rough outlines.`,
+      `- Casual sketchy feel, like drawn quickly in a notebook margin.`,
+      `- Hand-painted color washes that go slightly outside the lines.`,
+      `- Playful imperfect charm, NOT polished.`,
+    ],
+    pixel: [
+      `STYLE — 16-bit Pixel Art:`,
+      `- Clear pixel grid (work on a small ~96x96 internal canvas, scale up with NEAREST-NEIGHBOR sharp edges, no anti-aliasing or blur).`,
+      `- Limited retro game palette (8-16 colors).`,
+      `- Blocky pixelated edges, classic 90s SNES / GBA / Famicom aesthetic.`,
+      `- Each pixel must be visible and crisp.`,
+    ],
+    watercolor: [
+      `STYLE — Watercolor Illustration:`,
+      `- Soft watercolor washes with visible paper texture and gentle bleeding edges.`,
+      `- Delicate ink line work over the wet color.`,
+      `- Pastel artisanal palette, hand-painted feel.`,
+      `- Slightly transparent layered colors.`,
+    ],
+  };
+  return blocks[styleId].join('\n');
+}
+
+function fontBlock(styleId, text, isMain, isTab) {
+  if (isMain || isTab) return '';
+  const fonts = {
+    photo: `bold hand-written rounded Chinese font (like LINE custom sticker text), with thick (4-6px) WHITE outline and small drop shadow. Color the fill to match the mood (warm pink/orange for cute, cool blue for night, yellow for cheerful, etc).`,
+    chibi: `bold rounded chibi-style Chinese font, thick contrasting outline (white outline with dark fill, or dark outline with bright fill).`,
+    kawaii: `bubbly rounded kawaii Chinese font, thick white outline with bright candy-color fill, glossy highlight.`,
+    doodle: `messy handwritten Chinese characters drawn with the same pencil/marker as the illustration, slightly uneven and casual.`,
+    pixel: `pixel bitmap Chinese font, single-pixel hard outline, retro game UI feel.`,
+    watercolor: `elegant brush-script Chinese font with soft watercolor edges, gentle ink stroke.`,
+  };
+  return `Text: Display the Chinese text "${text}" in ${fonts[styleId]} Position the text where it does NOT block any face. Must stay legible at small messaging-app size.`;
+}
+
+function buildPrompt({ text, action, isMain, isTab, charDesc, styleId }) {
   const desc = charDesc.trim();
-  const charLine = desc ? `Reference character details: ${desc}.` : '';
+  const charLine = desc ? `Reference subject details: ${desc}.` : null;
+  const isPhoto = styleId === 'photo';
 
   if (isMain) {
+    const mainPose = isPhoto
+      ? `Composition: Use a friendly group shot or main subject from the source photo as the cover. Keep the photo authentic.`
+      : `Pose: Signature welcoming pose representing the whole set, looking toward viewer with friendly inviting smile.`;
     return [
-      `Generate a LINE sticker MAIN IMAGE based on the attached reference character.`,
+      `Generate a LINE sticker MAIN COVER IMAGE based on the attached reference image.`,
       ``,
-      `Style: Maintain the EXACT same character design, line art, color palette, and proportions as the reference image.`,
-      desc ? charLine : null,
+      styleBlock(styleId),
+      charLine,
       ``,
       `Specifications:`,
       `- Size: 240x240 pixels (square)`,
-      `- Background: fully transparent PNG`,
-      `- Single character centered`,
-      `- At least 10px padding from all edges`,
-      `- Clear, bold sticker outlines, readable at small thumbnail size`,
+      `- Background: FULLY TRANSPARENT PNG`,
+      `- Subject centered, ≥10px padding from all edges`,
+      `- Bold clear outlines, readable at thumbnail size`,
       ``,
-      `Pose: signature welcoming pose representing the entire sticker set, friendly inviting smile, character looking toward viewer.`,
+      mainPose,
       ``,
-      `Output: One main cover sticker, transparent background only, no extra text or decorations.`,
+      `Output: One main cover sticker, transparent background only, no text.`,
     ].filter(Boolean).join('\n');
   }
 
   if (isTab) {
+    const tabPose = isPhoto
+      ? `Composition: A close-up of one subject's face/head from the source photo, cleanly cut out.`
+      : `Pose: Simple front-facing portrait, neutral happy expression, simplified for tiny size.`;
     return [
-      `Generate a LINE sticker CHAT TAB ICON based on the attached reference character.`,
+      `Generate a LINE sticker CHAT TAB ICON based on the attached reference image.`,
       ``,
-      `Style: Same character as reference, simplified for tiny display.`,
-      desc ? charLine : null,
+      styleBlock(styleId),
+      charLine,
       ``,
       `Specifications:`,
       `- Size: 96x74 pixels`,
-      `- Background: fully transparent PNG`,
-      `- Single small character icon centered`,
-      `- Bold thick outlines, high contrast, recognizable at very small size`,
-      `- Minimal detail, focus on character silhouette and key features`,
+      `- Background: FULLY TRANSPARENT PNG`,
+      `- Single tiny icon centered`,
+      `- Bold thick outline, high contrast, recognizable at very small size`,
+      `- Minimal detail, focus on silhouette and key features`,
       ``,
-      `Pose: simple front-facing portrait, neutral happy expression.`,
+      tabPose,
       ``,
       `Output: One tiny tab icon, transparent background only, no text.`,
     ].filter(Boolean).join('\n');
   }
 
+  const compositionLine = isPhoto
+    ? `Composition: Choose a composition from the source photo that fits the mood — full group, parents only, child only, baby alone, or close-up — pick whichever matches the text best. Crop and arrange the cut-out naturally.`
+    : null;
+  const decorationLine = isPhoto
+    ? `Decorations: Add small hand-drawn cute decorative elements appropriate to the message — sparkles ✨, hearts 💗, stars ⭐, sun ☀, moon 🌙, light bulb 💡, music notes 🎵, confetti 🎉, speech bubbles — kept SMALL and never blocking faces.`
+    : null;
+
   return [
-    `Generate a LINE sticker based on the attached reference character.`,
+    `Generate a LINE sticker based on the attached reference image.`,
     ``,
-    `Style: Maintain the EXACT same character design, line art, color palette, and proportions as the reference image.`,
-    desc ? charLine : null,
+    styleBlock(styleId),
+    charLine,
     ``,
     `Specifications:`,
     `- Size: 370x320 pixels`,
-    `- Background: fully transparent PNG`,
-    `- Single character centered`,
-    `- At least 10px padding from all edges`,
-    `- Bold clear sticker outlines, readable at messaging app size`,
+    `- Background: FULLY TRANSPARENT PNG`,
+    `- Subject prominent and centered, ≥10px padding from all edges`,
+    `- Bold clear outlines, readable at messaging-app size`,
+    `- No watermark, no extra borders`,
     ``,
-    `Action / Expression: ${action}.`,
+    `Mood / Action: ${action}.`,
+    compositionLine,
+    decorationLine,
     ``,
-    `Text: Display the Chinese text "${text}" in a bold, rounded, friendly font. Position the text where it does not block the character's face. Use a thick contrasting outline (white outline with dark fill, or dark outline with bright fill) so the text stays legible at small sizes.`,
+    fontBlock(styleId, text, isMain, isTab),
     ``,
-    `Output: One sticker, transparent background only, no watermark, no extra elements.`,
+    `Output: One LINE sticker, transparent background only.`,
   ].filter(Boolean).join('\n');
 }
 
@@ -625,23 +756,24 @@ function generate() {
   }
 
   // 建構結果：N 張 + 主圖 + 標籤
+  const styleId = state.selectedStyle;
   const results = [];
   picked.forEach((p, idx) => {
     results.push({
       title: `第 ${idx + 1} 張：${p.text}`,
       subtitle: p.action,
-      prompt: buildPrompt({ text: p.text, action: p.action, charDesc }),
+      prompt: buildPrompt({ text: p.text, action: p.action, charDesc, styleId }),
     });
   });
   results.push({
     title: '🟢 主圖（240×240）— LINE 上架必備',
     subtitle: 'Main cover image for LINE sticker store',
-    prompt: buildPrompt({ isMain: true, charDesc }),
+    prompt: buildPrompt({ isMain: true, charDesc, styleId }),
   });
   results.push({
     title: '🔵 聊天標籤（96×74）— LINE 上架必備',
     subtitle: 'Chat tab icon shown in messaging app',
-    prompt: buildPrompt({ isTab: true, charDesc }),
+    prompt: buildPrompt({ isTab: true, charDesc, styleId }),
   });
 
   renderResults(results);
@@ -711,8 +843,33 @@ function toast(msg, dur = 1800) {
 }
 
 // ============================================================
+// 風格選單
+// ============================================================
+function buildStyleGrid() {
+  const grid = $('styleGrid');
+  Object.entries(STYLES).forEach(([id, s]) => {
+    const card = document.createElement('div');
+    card.className = 'style-card' + (s.default ? ' active' : '');
+    card.dataset.styleId = id;
+    card.innerHTML = `
+      <div class="flex items-center gap-2">
+        <span class="style-icon">${s.icon}</span>
+        <span class="style-name">${s.name}</span>
+      </div>
+      <div class="style-desc">${s.desc}</div>
+    `;
+    card.onclick = () => {
+      state.selectedStyle = id;
+      document.querySelectorAll('.style-card').forEach(c => c.classList.toggle('active', c.dataset.styleId === id));
+    };
+    grid.appendChild(card);
+  });
+}
+
+// ============================================================
 // 啟動
 // ============================================================
+buildStyleGrid();
 buildTabs();
 setupUpload();
 setupCountBtns();
