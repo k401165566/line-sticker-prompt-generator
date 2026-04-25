@@ -877,12 +877,6 @@ function buildTabs() {
     const content = document.createElement('div');
     content.className = 'tab-content' + (idx === 0 ? '' : ' hidden');
     content.dataset.tab = key;
-    if (key === 'community') {
-      const note = document.createElement('div');
-      note.className = 'mb-3 p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-gray-700';
-      note.innerHTML = `💬 <strong>網友建議區：</strong>這裡會收錄使用者建議的句子。<br>想推薦新句子？<a href="${DONATE.shopUrl}" target="_blank" rel="noopener" class="text-blue-600 underline">透過蝦皮聯絡我</a>，或寫在贊助欄那邊跟我說，我會新增到這裡。`;
-      content.appendChild(note);
-    }
     const grid = document.createElement('div');
     grid.className = 'grid grid-cols-2 md:grid-cols-3 gap-2';
     cat.items.forEach(item => {
