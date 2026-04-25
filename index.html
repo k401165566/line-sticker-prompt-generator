@@ -1219,10 +1219,85 @@ function setupSplitter() {
     reader.readAsDataURL(file);
   }
 
+  function findSmartCuts(img, cols, rows) {
+    // 用空白(透明)行/列找切點，避開 GPT 排版不均的問題
+    const W = img.naturalWidth, H = img.naturalHeight;
+    const tmp = document.createElement('canvas');
+    tmp.width = W; tmp.height = H;
+    const tctx = tmp.getContext('2d');
+    tctx.drawImage(img, 0, 0);
+    let imgData;
+    try {
+      imgData = tctx.getImageData(0, 0, W, H).data;
+    } catch (e) {
+      return null; // CORS 或其他問題,退回等分
+    }
+
+    // 計算每行/每列的非透明像素佔比
+    const rowFill = new Array(H).fill(0);
+    const colFill = new Array(W).fill(0);
+    for (let y = 0; y < H; y++) {
+      for (let x = 0; x < W; x++) {
+        if (imgData[(y * W + x) * 4 + 3] > 30) {
+          rowFill[y]++;
+          colFill[x]++;
+        }
+      }
+    }
+
+    // 1% 以下算空白
+    const rowBlank = rowFill.map(v => v < W * 0.01);
+    const colBlank = colFill.map(v => v < H * 0.01);
+
+    // 把連續空白合併成 bands
+    const mergeBands = (arr) => {
+      const bands = [];
+      let s = -1;
+      for (let i = 0; i <= arr.length; i++) {
+        if (i < arr.length && arr[i]) {
+          if (s === -1) s = i;
+        } else if (s !== -1) {
+          bands.push({ start: s, end: i - 1, mid: Math.floor((s + i - 1) / 2), len: i - s });
+          s = -1;
+        }
+      }
+      return bands;
+    };
+    const rowBands = mergeBands(rowBlank);
+    const colBands = mergeBands(colBlank);
+
+    // 過濾邊緣 bands(只取「中間」的分隔帶)
+    const innerRows = rowBands.filter(b => b.start > H * 0.05 && b.end < H * 0.95);
+    const innerCols = colBands.filter(b => b.start > W * 0.05 && b.end < W * 0.95);
+
+    if (innerRows.length < rows - 1 || innerCols.length < cols - 1) return null; // 找不到,退回等分
+
+    // 取最寬的 (rows-1)/(cols-1) 個 band
+    const topRows = innerRows.slice().sort((a, b) => b.len - a.len).slice(0, rows - 1).sort((a, b) => a.start - b.start);
+    const topCols = innerCols.slice().sort((a, b) => b.len - a.len).slice(0, cols - 1).sort((a, b) => a.start - b.start);
+
+    const yCuts = [0, ...topRows.map(b => b.mid), H];
+    const xCuts = [0, ...topCols.map(b => b.mid), W];
+    return { xCuts, yCuts };
+  }
+
   function splitInto4x2(img) {
     const cols = 4, rows = 2;
-    const cellW = Math.floor(img.naturalWidth / cols);
-    const cellH = Math.floor(img.naturalHeight / rows);
+    const smart = findSmartCuts(img, cols, rows);
+    let xCuts, yCuts;
+    if (smart) {
+      xCuts = smart.xCuts;
+      yCuts = smart.yCuts;
+      toast('用智慧切圖（找透明空白切點）');
+    } else {
+      // fallback: 等分切
+      const cellW = Math.floor(img.naturalWidth / cols);
+      const cellH = Math.floor(img.naturalHeight / rows);
+      xCuts = [0, cellW, cellW * 2, cellW * 3, img.naturalWidth];
+      yCuts = [0, cellH, img.naturalHeight];
+      toast('找不到清楚的切點，用等分切（可能會切到貼圖）', 3000);
+    }
+
     const cells = [];
     const grid = $('splitGrid');
     grid.innerHTML = '';
@@ -1230,11 +1305,13 @@ function setupSplitter() {
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < cols; c++) {
         const idx = r * cols + c + 1;
+        const x = xCuts[c], y = yCuts[r];
+        const w = xCuts[c + 1] - x, h = yCuts[r + 1] - y;
         const canvas = document.createElement('canvas');
-        canvas.width = cellW;
-        canvas.height = cellH;
+        canvas.width = w;
+        canvas.height = h;
         const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, c * cellW, r * cellH, cellW, cellH, 0, 0, cellW, cellH);
+        ctx.drawImage(img, x, y, w, h, 0, 0, w, h);
         const dataUrl = canvas.toDataURL('image/png');
         cells.push({ idx, dataUrl, canvas });
 
