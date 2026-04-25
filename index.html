@@ -805,6 +805,21 @@
     </div>
   </header>
 
+  <!-- Mobile fallback hint：手機永遠顯示（Custom Tabs 也涵蓋） -->
+  <div id="mobileFallbackHint" class="md:hidden bg-yellow-50 border-2 border-yellow-400 rounded-2xl p-4 mb-5 shadow-sm">
+    <div class="flex items-start gap-2">
+      <span class="text-xl flex-shrink-0">📱</span>
+      <div class="flex-1 text-sm leading-relaxed text-gray-800">
+        <div class="font-bold mb-1" style="color: #b45309;">下載 / 長按存圖失敗？</div>
+        <div>從 <strong>LINE / IG / Threads / FB</strong> 等 App 開啟連結（包括 Threads 的「在 Chrome 中開啟」)，下載功能常會被擋。請改用 <strong>Chrome / Safari</strong> 直接開這個網址：</div>
+        <div class="flex gap-2 flex-wrap mt-2">
+          <button id="copyUrlMobileBtn" class="px-3 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg text-sm font-bold whitespace-nowrap">📋 複製本站網址</button>
+          <button id="dismissMobileHint" class="px-3 py-2 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 rounded-lg text-sm whitespace-nowrap">關閉</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- In-app browser warning (LINE/FB/IG/Threads) -->
   <div id="inAppWarning" class="hidden bg-red-100 border-2 border-red-500 rounded-2xl p-4 md:p-5 mb-5 shadow-lg">
     <div class="font-bold text-red-700 text-base md:text-lg mb-2">⛔ 你正在用 <span id="inAppName">LINE</span> 內建瀏覽器，下載 / 長按存圖會失效</div>
@@ -2889,6 +2904,48 @@ function setupDonate() {
 }
 
 // ============================================================
+// 手機通用 fallback hint（含 Custom Tabs，UA 偵測抓不到）
+// ============================================================
+function setupMobileFallback() {
+  const hint = $('mobileFallbackHint');
+  if (!hint) return;
+  if (sessionStorage.getItem('dismissMobileHint') === '1') {
+    hint.classList.add('hidden');
+    return;
+  }
+  const copy = $('copyUrlMobileBtn');
+  if (copy) {
+    copy.onclick = () => {
+      const url = location.href;
+      const fallback = () => {
+        const ta = document.createElement('textarea');
+        ta.value = url;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        try { document.execCommand('copy'); toast('網址已複製！貼到 Chrome / Safari 網址列開啟'); }
+        catch (e) { toast('複製失敗，請長按網址列手動複製'); }
+        ta.remove();
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(url).then(
+          () => toast('網址已複製！貼到 Chrome / Safari 網址列開啟'),
+          () => fallback()
+        );
+      } else fallback();
+    };
+  }
+  const dismiss = $('dismissMobileHint');
+  if (dismiss) {
+    dismiss.onclick = () => {
+      sessionStorage.setItem('dismissMobileHint', '1');
+      hint.classList.add('hidden');
+    };
+  }
+}
+
+// ============================================================
 // 偵測 LINE / FB / IG 內建瀏覽器
 // ============================================================
 function detectInAppBrowser() {
@@ -2947,6 +3004,7 @@ setupModeToggle();
 setupSplitter();
 setupLineFitters();
 setupDonate();
+setupMobileFallback();
 detectInAppBrowser();
 $('generate').onclick = generate;
 updateCounts();
