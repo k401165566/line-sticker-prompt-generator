@@ -1754,6 +1754,7 @@ function setupSplitter() {
       $(id).value = v;
       $(id + 'Val').textContent = v + '%';
     });
+    syncLinePositions(); // 立即把紅線拉回預設位置
     if (lastImg) splitInto4x2(lastImg, 'manual');
   };
   // 重新自動智慧切
@@ -1873,10 +1874,15 @@ function setupSplitter() {
   let lastImg = null;
 
   function syncLinePositions() {
-    document.querySelector('.cut-line[data-cut="cutCol1"]').style.left = $('cutCol1').value + '%';
-    document.querySelector('.cut-line[data-cut="cutCol2"]').style.left = $('cutCol2').value + '%';
-    document.querySelector('.cut-line[data-cut="cutCol3"]').style.left = $('cutCol3').value + '%';
-    document.querySelector('.cut-line[data-cut="cutRow1"]').style.top = $('cutRow1').value + '%';
+    const setPos = (cutId, prop) => {
+      const line = document.querySelector(`.cut-line[data-cut="${cutId}"]`);
+      const slider = $(cutId);
+      if (line && slider) line.style[prop] = slider.value + '%';
+    };
+    setPos('cutCol1', 'left');
+    setPos('cutCol2', 'left');
+    setPos('cutCol3', 'left');
+    setPos('cutRow1', 'top');
   }
 
   function splitInto4x2(img, mode) {
@@ -2133,13 +2139,13 @@ function setupDonate() {
 function detectInAppBrowser() {
   const ua = navigator.userAgent || '';
   const tests = [
-    { name: 'LINE', re: /Line\//i },
-    { name: 'Facebook', re: /FBAN|FBAV|FB_IAB/i },
-    { name: 'Instagram', re: /Instagram/i },
-    { name: 'Threads', re: /Threads/i },
-    { name: 'WeChat', re: /MicroMessenger/i },
-    { name: 'TikTok', re: /TikTok|Bytedance/i },
-    { name: 'Twitter/X', re: /Twitter/i },
+    { name: 'LINE', re: /\bLine\//i },
+    { name: 'Facebook', re: /\bFBAN\b|\bFBAV\b|\bFB_IAB\b/i },
+    { name: 'Instagram', re: /\bInstagram\b/i },
+    { name: 'Threads', re: /\bThreads\b/i },
+    { name: 'WeChat', re: /\bMicroMessenger\b/i },
+    { name: 'TikTok', re: /\bTikTok\b|\bBytedance\b/i },
+    { name: 'Twitter/X', re: /TwitterAndroid|Twitter for iPhone|Twitter for iPad/i },
   ];
   const matched = tests.find(t => t.re.test(ua));
   if (!matched) return;
