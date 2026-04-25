@@ -1798,7 +1798,7 @@ function updateCounts() {
   else hint.textContent = `⚠️ 多 ${total - target} 句`;
   hint.className = 'text-xs md:text-sm ' + (total === target ? 'text-green-600' : 'text-orange-600');
   // 計數達標 → 生成按鈕脈動引導
-  $('generate').classList.toggle('ready', total >= target);
+  $('generate').classList.toggle('ready', total >= target && state.photos.length > 0);
 }
 
 function getCustomLines() {
@@ -1846,6 +1846,7 @@ function renderPhotoList() {
   list.innerHTML = '';
   if (state.photos.length === 0) {
     list.classList.add('hidden');
+    if (typeof updateCounts === 'function') updateCounts();
     return;
   }
   list.classList.remove('hidden');
@@ -1865,6 +1866,7 @@ function renderPhotoList() {
     };
     list.appendChild(item);
   });
+  if (typeof updateCounts === 'function') updateCounts();
 }
 
 function escapeAttr(s) {
@@ -2650,6 +2652,15 @@ function setupSplitter() {
       sorted[0] = Math.max(minGap, Math.min(sorted[0], W - 3 * minGap));
       sorted[1] = Math.max(sorted[0] + minGap, Math.min(sorted[1], W - 2 * minGap));
       sorted[2] = Math.max(sorted[1] + minGap, Math.min(sorted[2], W - minGap));
+      // 把 clamp 後的值同步回 slider + 紅線位置（避免拉完放開後跳一下）
+      const setSliderPct = (id, px) => {
+        const pct = Math.round(px / W * 100);
+        const el = $(id); if (el) el.value = pct;
+        const lbl = $(id + 'Val'); if (lbl) lbl.textContent = pct + '%';
+      };
+      setSliderPct('cutCol1', sorted[0]);
+      setSliderPct('cutCol2', sorted[1]);
+      setSliderPct('cutCol3', sorted[2]);
       xCuts = [0, ...sorted, W];
       yCuts = [0, Math.round(H * r1), H];
     } else if (mode === 'smart') {
