@@ -97,6 +97,23 @@
     <p class="text-gray-600 mt-2 text-sm md:text-base">上傳參考圖 → 選風格 → 選張數 → 勾文字 → 一鍵產生 ChatGPT Images 2.0 提示詞</p>
   </header>
 
+  <!-- In-app browser warning (LINE/FB/IG/Threads) -->
+  <div id="inAppWarning" class="hidden bg-red-100 border-2 border-red-500 rounded-2xl p-4 md:p-5 mb-5 shadow-lg">
+    <div class="font-bold text-red-700 text-base md:text-lg mb-2">⛔ 你正在用 <span id="inAppName">LINE</span> 內建瀏覽器，下載 / 長按存圖會失效</div>
+    <div class="text-sm md:text-base text-gray-800 mb-3 leading-relaxed">
+      解決方式：跳出去用 <strong>Chrome 或 Safari</strong> 開這個網址
+    </div>
+    <ol class="text-sm md:text-base space-y-1.5 mb-3 leading-relaxed pl-5 list-decimal text-gray-800">
+      <li>點畫面 <strong>右上角的「⋮」三點</strong> 或 <strong>「⋯」按鈕</strong></li>
+      <li>選 <strong>「用其他瀏覽器開啟」</strong> / <strong>「在 Chrome 中開啟」</strong> / <strong>「在 Safari 中開啟」</strong></li>
+      <li>跳到正常瀏覽器後一切就會正常運作</li>
+    </ol>
+    <div class="flex gap-2 flex-wrap">
+      <button id="copyUrlBtn" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-bold">📋 複製網址</button>
+      <button id="dismissInAppBtn" class="px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-800 rounded-lg text-sm">忽略警告繼續用</button>
+    </div>
+  </div>
+
   <!-- WARNING: must switch to Thinking mode -->
   <div class="bg-red-50 border-l-4 border-red-500 rounded-xl p-4 md:p-5 mb-5 shadow-sm">
     <div class="font-bold text-red-700 text-base md:text-lg mb-2">⚠️ 開始前先做這個設定（不做的話文字會跑錯字）</div>
@@ -2111,6 +2128,52 @@ function setupDonate() {
 }
 
 // ============================================================
+// 偵測 LINE / FB / IG 內建瀏覽器
+// ============================================================
+function detectInAppBrowser() {
+  const ua = navigator.userAgent || '';
+  const tests = [
+    { name: 'LINE', re: /Line\//i },
+    { name: 'Facebook', re: /FBAN|FBAV|FB_IAB/i },
+    { name: 'Instagram', re: /Instagram/i },
+    { name: 'Threads', re: /Threads/i },
+    { name: 'WeChat', re: /MicroMessenger/i },
+    { name: 'TikTok', re: /TikTok|Bytedance/i },
+    { name: 'Twitter/X', re: /Twitter/i },
+  ];
+  const matched = tests.find(t => t.re.test(ua));
+  if (!matched) return;
+  if (sessionStorage.getItem('dismissInApp') === '1') return;
+
+  $('inAppName').textContent = matched.name;
+  $('inAppWarning').classList.remove('hidden');
+
+  $('copyUrlBtn').onclick = () => {
+    const url = location.href;
+    navigator.clipboard.writeText(url).then(
+      () => toast('網址已複製！貼到 Chrome / Safari 網址列開啟'),
+      () => {
+        // Fallback：用舊方法
+        const ta = document.createElement('textarea');
+        ta.value = url;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        try { document.execCommand('copy'); toast('網址已複製'); }
+        catch (e) { toast('複製失敗，請長按網址列手動複製'); }
+        ta.remove();
+      }
+    );
+  };
+
+  $('dismissInAppBtn').onclick = () => {
+    sessionStorage.setItem('dismissInApp', '1');
+    $('inAppWarning').classList.add('hidden');
+  };
+}
+
+// ============================================================
 // 啟動
 // ============================================================
 buildStyleGrid();
@@ -2123,6 +2186,7 @@ setupModeToggle();
 setupSplitter();
 setupLineFitters();
 setupDonate();
+detectInAppBrowser();
 $('generate').onclick = generate;
 updateCounts();
 </script>
