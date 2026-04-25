@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LINE 貼圖 Prompt 產生器</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft JhengHei", "PingFang TC", sans-serif; }
+  .count-btn { padding: 0.75rem 1rem; border-radius: 0.75rem; background: #f3f4f6; font-weight: 600; transition: all 0.15s; border: 2px solid transparent; }
+  .count-btn:hover { background: #e5e7eb; }
+  .count-btn.active { background: #10b981; color: white; border-color: #059669; }
+  .tab-btn { padding: 0.5rem 1rem; border-radius: 0.5rem; font-weight: 500; transition: all 0.15s; background: #f3f4f6; }
+  .tab-btn:hover { background: #e5e7eb; }
+  .tab-btn.active { background: #10b981; color: white; }
+  .phrase-chip { display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0.75rem; border-radius: 0.5rem; border: 2px solid #e5e7eb; cursor: pointer; transition: all 0.1s; user-select: none; background: white; }
+  .phrase-chip:hover { border-color: #10b981; background: #f0fdf4; }
+  .phrase-chip.checked { background: #10b981; color: white; border-color: #059669; }
+  .phrase-chip.checked .phrase-action { color: #d1fae5; }
+  .phrase-action { font-size: 0.7rem; color: #9ca3af; margin-left: auto; max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .result-card { background: #f9fafb; border-radius: 0.75rem; padding: 1rem; border: 1px solid #e5e7eb; }
+  .result-card pre { white-space: pre-wrap; word-break: break-word; font-size: 0.85rem; line-height: 1.5; }
+  details > summary { cursor: pointer; user-select: none; }
+  details > summary::-webkit-details-marker { display: none; }
+</style>
+</head>
+<body class="bg-gradient-to-br from-green-50 via-blue-50 to-purple-50 min-h-screen pb-32">
+<div class="container mx-auto p-4 md:p-6 max-w-6xl">
+
+  <header class="text-center mb-6">
+    <h1 class="text-3xl md:text-4xl font-extrabold text-gray-800">🟢 LINE 貼圖 Prompt 產生器</h1>
+    <p class="text-gray-600 mt-2 text-sm md:text-base">上傳參考圖 → 選張數 → 勾文字 → 一鍵產生 ChatGPT Images 2.0 提示詞</p>
+  </header>
+
+  <!-- Step 1 -->
+  <section class="bg-white rounded-2xl shadow-md p-5 md:p-6 mb-5">
+    <h2 class="text-lg md:text-xl font-bold mb-3">1️⃣ 上傳參考圖片</h2>
+    <div id="dropzone" class="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center hover:border-green-400 cursor-pointer transition bg-gray-50">
+      <input type="file" id="imageInput" accept="image/*" class="hidden">
+      <div id="uploadHint">
+        <div class="text-5xl mb-2">📁</div>
+        <p class="font-medium">點擊或拖曳圖片到這裡</p>
+        <p class="text-sm text-gray-500 mt-1">支援 JPG / PNG，建議單一角色清晰圖（圖片不會上傳，只會在你瀏覽器內顯示）</p>
+      </div>
+      <img id="preview" class="hidden max-h-72 mx-auto rounded-lg shadow" />
+    </div>
+    <div class="mt-4">
+      <label class="text-sm font-medium text-gray-700">補充角色描述（選填）</label>
+      <textarea id="charDesc" rows="2" placeholder="例：白色柴犬，戴紅色領巾，圓滾滾的眼睛，扁平 Q 版插畫風" class="w-full mt-1 p-3 border border-gray-300 rounded-lg focus:border-green-400 focus:ring-1 focus:ring-green-400 outline-none"></textarea>
+      <p class="text-xs text-gray-500 mt-1">不打也可以，AI 會自己看圖。打了會更精準（特別是顏色、配件、髮型這些細節）</p>
+    </div>
+  </section>
+
+  <!-- Step 2 -->
+  <section class="bg-white rounded-2xl shadow-md p-5 md:p-6 mb-5">
+    <h2 class="text-lg md:text-xl font-bold mb-3">2️⃣ 選擇張數</h2>
+    <div class="grid grid-cols-5 gap-2 md:gap-3">
+      <button class="count-btn" data-count="8">8 張</button>
+      <button class="count-btn active" data-count="16">16 張</button>
+      <button class="count-btn" data-count="24">24 張</button>
+      <button class="count-btn" data-count="32">32 張</button>
+      <button class="count-btn" data-count="40">40 張</button>
+    </div>
+    <p class="text-xs md:text-sm text-gray-500 mt-3">⚠️ 系統會自動多生 2 段（240×240 主圖 + 96×74 聊天標籤），LINE 上架必備</p>
+  </section>
+
+  <!-- Step 3 -->
+  <section class="bg-white rounded-2xl shadow-md p-5 md:p-6 mb-5">
+    <div class="flex flex-wrap items-center justify-between mb-3 gap-2">
+      <h2 class="text-lg md:text-xl font-bold">3️⃣ 勾選文字內容（共 200 句）</h2>
+      <div class="flex gap-2 text-sm">
+        <button id="selectAllCat" class="px-3 py-1 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200">全選此類</button>
+        <button id="clearCat" class="px-3 py-1 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200">清空此類</button>
+      </div>
+    </div>
+    <div id="tabBtns" class="flex flex-wrap gap-2 mb-4 pb-3 border-b"></div>
+    <div id="tabContents"></div>
+  </section>
+
+  <!-- Step 4 -->
+  <section class="bg-white rounded-2xl shadow-md p-5 md:p-6 mb-5">
+    <h2 class="text-lg md:text-xl font-bold mb-3">4️⃣ 自訂文字（選填）</h2>
+    <textarea id="customText" rows="4" placeholder="一行一句，例如：&#10;我餓了&#10;週一憂鬱&#10;咖啡時間" class="w-full p-3 border border-gray-300 rounded-lg focus:border-green-400 focus:ring-1 focus:ring-green-400 outline-none font-mono text-sm"></textarea>
+    <p class="text-xs text-gray-500 mt-1">這些會加進去你的勾選總數裡。AI 會自己想對應動作。</p>
+  </section>
+
+  <!-- Results -->
+  <section id="resultsSection" class="bg-white rounded-2xl shadow-md p-5 md:p-6 mb-5 hidden">
+    <div class="flex flex-wrap justify-between items-center mb-4 gap-2">
+      <h2 class="text-lg md:text-xl font-bold">📋 產生的 Prompt</h2>
+      <div class="flex gap-2">
+        <button id="copyAll" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 text-sm font-semibold">📋 全部複製</button>
+        <button id="downloadAll" class="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 text-sm font-semibold">💾 下載 .txt</button>
+      </div>
+    </div>
+    <div id="results" class="space-y-3"></div>
+  </section>
+
+</div>
+
+<!-- Sticky Bottom Bar -->
+<div class="fixed bottom-0 left-0 right-0 bg-white shadow-2xl border-t border-gray-200 p-3 md:p-4 z-50">
+  <div class="container mx-auto max-w-6xl flex items-center gap-2 md:gap-3 flex-wrap">
+    <span class="font-bold text-sm md:text-base">
+      已選 <span id="selectedCount" class="text-green-600 text-lg">0</span>
+      <span class="text-gray-400">/</span>
+      目標 <span id="targetCount" class="text-blue-600">16</span> 句
+    </span>
+    <span id="statusHint" class="text-xs md:text-sm text-gray-500"></span>
+    <button id="randomFill" class="px-3 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 text-sm font-semibold">🎲 隨機補滿</button>
+    <button id="clearAll" class="px-3 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 text-sm font-semibold">🧹 全部清空</button>
+    <div class="flex-1"></div>
+    <button id="generate" class="px-5 md:px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-500 text-white text-base md:text-lg font-bold rounded-xl shadow-lg hover:from-green-600 hover:to-emerald-600 transition">
+      🚀 生成 Prompt
+    </button>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast" class="fixed top-4 left-1/2 -translate-x-1/2 bg-gray-900 text-white px-5 py-3 rounded-xl shadow-2xl opacity-0 pointer-events-none transition-opacity z-50 text-sm"></div>
+
+<script>
+// ============================================================
+// 200 個文字模板 + 動作描述（英文）
+// ============================================================
+const PHRASES = {
+  greeting: { name: '日常問候', icon: '👋', items: [
+    { text: '早安', action: 'stretching arms with morning sunshine, eyes half-open, warm gentle smile' },
+    { text: '午安', action: 'waving under noon sun, relaxed cheerful pose' },
+    { text: '晚安', action: 'in pajamas hugging a pillow, sleepy eyes, gently yawning' },
+    { text: '嗨', action: 'waving hand enthusiastically, big smile, sparkling eyes' },
+    { text: 'Hi', action: 'cheerful double-hand wave, bouncy energetic pose' },
+    { text: 'Hello', action: 'friendly grin with wave, slightly tilted head' },
+    { text: '掰掰', action: 'waving goodbye with soft smile, slightly turning away' },
+    { text: '再見', action: 'waving and bowing slightly, gentle expression' },
+    { text: '好久不見', action: 'opening arms wide for a hug, surprised happy face' },
+    { text: '最近好嗎', action: 'tilting head with curious caring expression' },
+    { text: '我回來了', action: 'opening door, tired but happy expression' },
+    { text: '我出門了', action: 'putting on shoes at doorway, waving back' },
+    { text: '路上小心', action: 'waving with concerned caring smile' },
+    { text: '慢走', action: 'bowing politely with gentle warm smile' },
+    { text: '起床啦', action: 'banging an alarm clock, energetic shouting pose' },
+    { text: '該睡了', action: 'pointing at clock, sleepy yawning eyes' },
+    { text: '做個好夢', action: 'lying down with stars and moon background, peaceful smile' },
+    { text: '早', action: 'rubbing eyes with messy hair, half-asleep cute pose' },
+    { text: '午餐時間', action: 'holding chopsticks and rice bowl, excited eyes' },
+    { text: '下午茶', action: 'holding teacup with steam, content cozy smile' },
+    { text: '消夜時間', action: 'eating instant noodles, happy hungry face' },
+    { text: '週末快樂', action: 'jumping with confetti, super excited expression' },
+    { text: '上班加油', action: 'holding briefcase, determined fist pump' },
+    { text: '下班囉', action: 'taking off tie with relieved big smile' },
+    { text: '早起的鳥兒', action: 'standing tall in early morning light, energetic pose' },
+  ]},
+  emotion: { name: '情緒反應', icon: '😆', items: [
+    { text: '開心', action: 'jumping with both arms up, huge smile, sparkles around' },
+    { text: '超開心', action: 'dancing with hearts and stars exploding around' },
+    { text: '哈哈', action: 'laughing hard, head tilted back, tears of joy' },
+    { text: '笑死', action: 'rolling on floor laughing, hand on belly' },
+    { text: '嘻嘻', action: 'covering mouth with hand, mischievous smile' },
+    { text: '生氣', action: 'angry red cheeks, fists clenched, steam from ears' },
+    { text: '爆氣', action: 'explosive anger, fire background, gritted teeth' },
+    { text: '火大', action: 'veins on forehead, gritted teeth, frustrated face' },
+    { text: '哭哭', action: 'crying with big tears streaming, sad pout' },
+    { text: '大哭', action: 'sobbing with waterfall tears, mouth wide open' },
+    { text: '想哭', action: 'eyes welling up with tears, trembling lip' },
+    { text: '嗚嗚', action: 'holding tissue, wiping tears, sniffling sadly' },
+    { text: '無奈', action: 'hand on forehead, sighing, helpless expression' },
+    { text: '嘆氣', action: 'cloud of breath leaving mouth, drooping shoulders' },
+    { text: '傻眼', action: 'jaw dropped, blank stare, white shocked pupils' },
+    { text: '翻白眼', action: 'eyes rolled showing whites, annoyed sigh' },
+    { text: '害羞', action: 'blushing red cheeks, hands partially covering face' },
+    { text: '臉紅', action: 'face turning red, shy smile, looking down' },
+    { text: '驚訝', action: 'shocked expression, mouth and eyes wide open' },
+    { text: '嚇到', action: 'jumping back with scared face, sweat drops' },
+    { text: '震驚', action: 'cracked background effect, eyes bulging' },
+    { text: '緊張', action: 'nervous sweat drops, fidgeting hands, worried smile' },
+    { text: '害怕', action: 'hugging self trembling, scared wide eyes' },
+    { text: '無聊', action: 'chin on hand, half-closed eyes, blank face' },
+    { text: '累爆', action: 'collapsed face down, tongue out, exhausted' },
+  ]},
+  work: { name: '職場通訊', icon: '💼', items: [
+    { text: '收到', action: 'giving a thumbs up, professional confident smile' },
+    { text: '了解', action: 'nodding with understanding expression, hand near chin' },
+    { text: '知道了', action: 'light bulb above head, eyes lighting up' },
+    { text: '好的', action: 'saluting, eager attentive face' },
+    { text: 'OK', action: 'making OK hand sign, confident wink' },
+    { text: '沒問題', action: 'flexing arm muscles, confident grin' },
+    { text: '辛苦了', action: 'patting shoulder with caring expression' },
+    { text: '加班中', action: 'typing on laptop, tired eyes, coffee cup beside' },
+    { text: '開會中', action: 'sitting with notepad, focused listening' },
+    { text: '忙碌中', action: 'juggling papers and phone, frantic expression' },
+    { text: '處理中', action: 'rolling up sleeves, focused determined face' },
+    { text: '馬上來', action: 'running fast with motion lines, eager face' },
+    { text: '稍等', action: 'holding up one finger, polite please-wait gesture' },
+    { text: '等一下', action: 'palm out gesture, focused expression' },
+    { text: '不好意思', action: 'bowing slightly with apologetic smile' },
+    { text: '抱歉', action: 'hands together apologizing, embarrassed face' },
+    { text: '麻煩了', action: 'bowing with humble grateful expression' },
+    { text: '感謝', action: 'hands together in thanks, sincere smile' },
+    { text: '謝謝', action: 'both hands holding heart, grateful warm smile' },
+    { text: '拜託', action: 'pressing palms together, pleading puppy eyes' },
+    { text: '已讀', action: 'holding phone with neutral expression' },
+    { text: '晚點回', action: 'waving phone with apologetic smile' },
+  ]},
+  decision: { name: '回應決定', icon: '✅', items: [
+    { text: '好啊', action: 'thumbs up with cheerful smile' },
+    { text: '可以', action: 'making OK sign, agreeable nod' },
+    { text: '答應', action: 'putting hand on heart, sincere promise' },
+    { text: '同意', action: 'raising hand with confident expression' },
+    { text: '不要', action: 'crossing arms in X shape, pouting refusal' },
+    { text: '不行', action: 'shaking head with stern face, finger wagging' },
+    { text: 'NO', action: 'holding up palm forward, firm expression' },
+    { text: '拒絕', action: 'turning away with crossed arms, dismissive face' },
+    { text: '考慮一下', action: 'finger on chin, thoughtful expression looking up' },
+    { text: '再說', action: 'looking away with hand wave, dismissive' },
+    { text: '看狀況', action: 'shrugging shoulders, palms up uncertain' },
+    { text: '隨便', action: 'lazy shrug, eyes half-closed, indifferent' },
+    { text: '都可以', action: 'hands open palms up, easygoing smile' },
+    { text: '你決定', action: 'pointing at viewer, encouraging smile' },
+    { text: '聽你的', action: 'pointing at viewer with cheerful nod' },
+    { text: '想一下', action: 'pondering pose, finger on temple' },
+    { text: '絕對不要', action: 'making big X with arms, fierce no' },
+    { text: '好啦', action: 'sighing while nodding, reluctant smile' },
+    { text: '算了', action: 'waving hand dismissively, giving up smile' },
+    { text: '隨你', action: 'shrugging with closed eyes, indifferent' },
+  ]},
+  cute: { name: '撒嬌賣萌', icon: '🥰', items: [
+    { text: '抱抱', action: 'opening arms wide for hug, hopeful eyes' },
+    { text: '親親', action: 'puckering lips with floating hearts' },
+    { text: '愛你', action: 'making finger heart, big sparkling eyes' },
+    { text: '我愛你', action: 'hands forming big heart shape, blushing smile' },
+    { text: '求求你', action: 'hands clasped pleading, watery puppy eyes' },
+    { text: '拜託拜託', action: 'kneeling with hands together, begging pose' },
+    { text: '撒嬌', action: 'tilting head cutely, hands near cheeks, sparkles' },
+    { text: '討抱', action: 'reaching arms out wanting hug, pouty face' },
+    { text: '討親親', action: 'pointing at cheek with closed eyes, expectant' },
+    { text: '可愛吧', action: 'posing cutely with peace sign near eye' },
+    { text: '萌萌噠', action: 'cat ears appearing, paw gesture near face' },
+    { text: '賣萌', action: 'cute face with paws up, sparkly eyes' },
+    { text: '人家也想', action: 'pouting with hands clasped, longing eyes' },
+    { text: '痛痛', action: 'holding bumped head with tears, pouty' },
+    { text: '惜惜', action: 'patting own head gently, comforted smile' },
+    { text: '摸頭', action: 'tilting head up wanting head pats, content' },
+    { text: '秀秀', action: 'opening arms for comfort, vulnerable face' },
+    { text: '乖乖', action: 'sitting properly hands on lap, innocent face' },
+    { text: '打勾勾', action: 'extending pinky finger, sincere smile' },
+    { text: '討厭啦', action: 'playfully hitting with pout, blushing' },
+    { text: '想你了', action: 'holding heart with longing dreamy eyes' },
+    { text: '好想你', action: 'hugging photo with sad missing face' },
+  ]},
+  funny: { name: '吐槽幽默', icon: '😏', items: [
+    { text: '蛤', action: 'tilting head with confused open mouth' },
+    { text: '欸', action: 'raising eyebrow with surprised side glance' },
+    { text: '蛤？', action: 'one eye squinted, mouth twisted in disbelief' },
+    { text: '？？？', action: 'multiple question marks above head, confused' },
+    { text: '認真？', action: 'skeptical raised eyebrow, smirk' },
+    { text: '真假', action: 'shocked open mouth with hands on cheeks' },
+    { text: '不會吧', action: 'covering face with disbelief, peeking through' },
+    { text: '什麼鬼', action: 'making face with disgust and confusion' },
+    { text: '神經病', action: 'pointing finger at temple, mocking smile' },
+    { text: '北七', action: 'sticking tongue out with X eyes, silly pose' },
+    { text: '白癡', action: 'flat eyes with bored expression, unimpressed' },
+    { text: '是怎樣', action: 'hands up questioning, irritated face' },
+    { text: '別這樣', action: 'palm out blocking, exasperated smile' },
+    { text: '夠了喔', action: 'finger pointed warning, fed up smile' },
+    { text: '你贏', action: 'throwing hands up in surrender, defeated grin' },
+    { text: '隨便你', action: 'looking away with bored shrug' },
+    { text: '笑死我', action: 'clutching belly laughing, tears flying' },
+    { text: '太扯', action: 'covering mouth with shocked wide eyes' },
+    { text: '誇張', action: 'exaggerated shocked face with hands on head' },
+    { text: '哈囉', action: 'knocking on viewer head, sarcastic smile' },
+    { text: '醒醒', action: 'shaking shoulders with worried sarcasm' },
+    { text: '我的天', action: 'both hands on head dramatically, looking up' },
+    { text: '老天爺', action: 'looking up to sky with hands clasped, dramatic' },
+    { text: '咦', action: 'tilted head with curious confused eye' },
+    { text: '幹嘛', action: 'hands on hips with annoyed cute pout' },
+  ]},
+  cheer: { name: '鼓勵打氣', icon: '💪', items: [
+    { text: '加油', action: 'fist pump in air with bright determined smile' },
+    { text: '加加油', action: 'holding pompoms cheering, energetic jump' },
+    { text: '你最棒', action: 'giving double thumbs up, proud smile' },
+    { text: '你可以的', action: 'pointing at viewer encouragingly, confident' },
+    { text: '別灰心', action: 'patting back with warm caring smile' },
+    { text: '衝啊', action: 'sprinting forward with motion lines, fierce face' },
+    { text: 'Fighting', action: 'punching air with determined warrior face' },
+    { text: '不要放棄', action: 'holding up clenched fist, fierce eyes' },
+    { text: '撐住', action: 'pulling rope with gritted teeth, determined' },
+    { text: '挺住', action: 'bracing with hands forward, strong stance' },
+    { text: '相信自己', action: 'hand on chest with confident closed eyes' },
+    { text: '我支持你', action: 'hands giving heart shape, warm smile' },
+    { text: '沒事的', action: 'patting head gently, reassuring smile' },
+    { text: '會過去的', action: 'holding umbrella in rain, hopeful smile' },
+    { text: '明天會更好', action: 'looking at sunrise, hopeful peaceful smile' },
+    { text: '休息一下', action: 'leaning on hand relaxed, peaceful smile' },
+    { text: '深呼吸', action: 'inhaling deeply with closed eyes, calm aura' },
+    { text: '不哭', action: 'wiping tears with handkerchief, gentle caring face' },
+    { text: '我陪你', action: 'sitting beside with supportive warm smile' },
+    { text: '別怕', action: 'shielding with arm protectively, brave face' },
+  ]},
+  festive: { name: '節慶祝賀', icon: '🎉', items: [
+    { text: '新年快樂', action: 'holding red envelope with festive smile, fireworks behind' },
+    { text: '恭喜發財', action: 'clasping hands with money symbols around, prosperous smile' },
+    { text: '生日快樂', action: 'holding birthday cake with candles, party hat on head' },
+    { text: '聖誕快樂', action: 'wearing santa hat with snowflakes, cheerful expression' },
+    { text: '母親節快樂', action: 'holding bouquet of carnations, loving warm smile' },
+    { text: '父親節快樂', action: 'giving thumbs up with cape, hero pose' },
+    { text: '中秋快樂', action: 'holding mooncake with full moon background' },
+    { text: '端午快樂', action: 'holding zongzi with dragon boat behind' },
+    { text: '情人節快樂', action: 'holding red rose with hearts floating, romantic blush' },
+    { text: '萬聖節', action: 'wearing pumpkin costume with spooky cute grin' },
+    { text: '恭喜', action: 'throwing confetti with both hands, cheerful smile' },
+    { text: '祝福你', action: 'blowing kiss with sparkles, warm smile' },
+    { text: '萬事如意', action: 'bowing with traditional gesture, peaceful smile' },
+    { text: '心想事成', action: 'hands clasped praying with stars around' },
+    { text: '平安喜樂', action: 'hands together in prayer, serene smile' },
+    { text: '闔家平安', action: 'family group pose with caring smile' },
+    { text: '大吉大利', action: 'holding gold ingot with prosperous grin' },
+    { text: '發大財', action: 'money raining around, ecstatic smile' },
+    { text: '乾杯', action: 'holding glass up for toast, cheerful wink' },
+    { text: '慶祝', action: 'throwing balloons with party mood, happy face' },
+  ]},
+  taiwanese: { name: '台式口語', icon: '🇹🇼', items: [
+    { text: '蛤？', action: 'tilting head sideways, dialect-style confused face' },
+    { text: '走啦', action: 'tugging arm with eager smile, urging gesture' },
+    { text: '走囉', action: 'waving while walking away, casual smile' },
+    { text: '安啦', action: 'patting back reassuringly, chill confident smile' },
+    { text: '莫驚', action: 'calming hand gesture, gentle reassuring smile' },
+    { text: '母湯', action: 'making big X with arms, stern dialect face' },
+    { text: '就醬', action: 'hand wave finishing gesture, satisfied smile' },
+    { text: '頂', action: 'flexing both arms, super impressed face' },
+    { text: '超派', action: 'tough pose with sunglasses, swagger expression' },
+    { text: '很可以', action: 'thumbs up with approving smirk' },
+    { text: '機車', action: 'eye roll with frustrated dialect-mocking smile' },
+    { text: '靠北', action: 'palm slapped on forehead, dialect frustration' },
+    { text: '阿娘喂', action: 'hands on cheeks with dramatic surprise' },
+    { text: '足讚', action: 'thumbs up with super impressed wide eyes' },
+    { text: '讚', action: 'simple thumbs up with nod, cheerful' },
+    { text: 'ㄎㄧㄤ', action: 'silly cross-eyed with tongue out' },
+    { text: '母湯喔', action: 'finger wag with disapproving cute pout' },
+    { text: '麥鬧', action: 'waving hand to stop with playful smile' },
+    { text: '共三小', action: 'confused frustrated dialect face' },
+    { text: '有夠扯', action: 'exaggerated jaw drop with hands on head' },
+    { text: '不錯吃', action: 'patting belly with satisfied chef-kiss gesture' },
+  ]},
+};
+
+// ============================================================
+// 狀態
+// ============================================================
+const state = {
+  targetCount: 16,
+  currentTab: 'greeting',
+  selected: new Set(),
+  imageDataUrl: null,
+};
+
+// ============================================================
+// DOM
+// ============================================================
+const $ = id => document.getElementById(id);
+const tabBtns = $('tabBtns');
+const tabContents = $('tabContents');
+
+// ============================================================
+// 初始化 Tabs
+// ============================================================
+function buildTabs() {
+  Object.entries(PHRASES).forEach(([key, cat], idx) => {
+    const btn = document.createElement('button');
+    btn.className = 'tab-btn' + (idx === 0 ? ' active' : '');
+    btn.dataset.tab = key;
+    btn.innerHTML = `${cat.icon} ${cat.name} <span class="tab-count text-xs opacity-70" data-cat="${key}">(0/${cat.items.length})</span>`;
+    btn.onclick = () => switchTab(key);
+    tabBtns.appendChild(btn);
+
+    const content = document.createElement('div');
+    content.className = 'tab-content' + (idx === 0 ? '' : ' hidden');
+    content.dataset.tab = key;
+    const grid = document.createElement('div');
+    grid.className = 'grid grid-cols-2 md:grid-cols-3 gap-2';
+    cat.items.forEach(item => {
+      const chip = document.createElement('div');
+      chip.className = 'phrase-chip';
+      chip.dataset.text = item.text;
+      chip.dataset.action = item.action;
+      chip.dataset.cat = key;
+      chip.innerHTML = `
+        <span class="font-medium">${item.text}</span>
+        <span class="phrase-action" title="${item.action}">${item.action}</span>
+      `;
+      chip.onclick = () => toggleChip(chip);
+      grid.appendChild(chip);
+    });
+    content.appendChild(grid);
+    tabContents.appendChild(content);
+  });
+}
+
+function switchTab(key) {
+  state.currentTab = key;
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === key));
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.toggle('hidden', c.dataset.tab !== key));
+}
+
+function toggleChip(chip) {
+  const text = chip.dataset.text;
+  if (state.selected.has(text)) {
+    state.selected.delete(text);
+    chip.classList.remove('checked');
+  } else {
+    state.selected.add(text);
+    chip.classList.add('checked');
+  }
+  updateCounts();
+}
+
+function updateCounts() {
+  $('selectedCount').textContent = state.selected.size + getCustomLines().length;
+  // 各 tab 計數
+  Object.keys(PHRASES).forEach(key => {
+    const total = PHRASES[key].items.length;
+    const selected = PHRASES[key].items.filter(i => state.selected.has(i.text)).length;
+    const span = document.querySelector(`.tab-count[data-cat="${key}"]`);
+    if (span) span.textContent = `(${selected}/${total})`;
+  });
+  // 狀態提示
+  const total = state.selected.size + getCustomLines().length;
+  const target = state.targetCount;
+  const hint = $('statusHint');
+  if (total === target) hint.textContent = '✅ 剛好！';
+  else if (total < target) hint.textContent = `⚠️ 還差 ${target - total} 句`;
+  else hint.textContent = `⚠️ 多了 ${total - target} 句（生成時會取前 ${target} 句）`;
+  hint.className = 'text-xs md:text-sm ' + (total === target ? 'text-green-600' : 'text-orange-600');
+}
+
+function getCustomLines() {
+  return $('customText').value.split('\n').map(s => s.trim()).filter(Boolean);
+}
+
+// ============================================================
+// 圖片上傳
+// ============================================================
+function setupUpload() {
+  const dz = $('dropzone');
+  const input = $('imageInput');
+  const preview = $('preview');
+  const hint = $('uploadHint');
+
+  dz.onclick = () => input.click();
+  dz.ondragover = e => { e.preventDefault(); dz.classList.add('border-green-400', 'bg-green-50'); };
+  dz.ondragleave = () => dz.classList.remove('border-green-400', 'bg-green-50');
+  dz.ondrop = e => {
+    e.preventDefault();
+    dz.classList.remove('border-green-400', 'bg-green-50');
+    const f = e.dataTransfer.files[0];
+    if (f) handleFile(f);
+  };
+  input.onchange = () => input.files[0] && handleFile(input.files[0]);
+
+  function handleFile(file) {
+    if (!file.type.startsWith('image/')) { toast('請上傳圖片檔'); return; }
+    const reader = new FileReader();
+    reader.onload = e => {
+      state.imageDataUrl = e.target.result;
+      preview.src = state.imageDataUrl;
+      preview.classList.remove('hidden');
+      hint.classList.add('hidden');
+    };
+    reader.readAsDataURL(file);
+  }
+}
+
+// ============================================================
+// 張數選擇
+// ============================================================
+function setupCountBtns() {
+  document.querySelectorAll('.count-btn').forEach(btn => {
+    btn.onclick = () => {
+      document.querySelectorAll('.count-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      state.targetCount = parseInt(btn.dataset.count);
+      $('targetCount').textContent = state.targetCount;
+      updateCounts();
+    };
+  });
+}
+
+// ============================================================
+// 全選 / 清空（當前類）
+// ============================================================
+function setupCatBtns() {
+  $('selectAllCat').onclick = () => {
+    PHRASES[state.currentTab].items.forEach(i => state.selected.add(i.text));
+    document.querySelectorAll(`.phrase-chip[data-cat="${state.currentTab}"]`).forEach(c => c.classList.add('checked'));
+    updateCounts();
+  };
+  $('clearCat').onclick = () => {
+    PHRASES[state.currentTab].items.forEach(i => state.selected.delete(i.text));
+    document.querySelectorAll(`.phrase-chip[data-cat="${state.currentTab}"]`).forEach(c => c.classList.remove('checked'));
+    updateCounts();
+  };
+}
+
+// ============================================================
+// 全部清空 / 隨機補滿
+// ============================================================
+function setupGlobalBtns() {
+  $('clearAll').onclick = () => {
+    state.selected.clear();
+    document.querySelectorAll('.phrase-chip').forEach(c => c.classList.remove('checked'));
+    $('customText').value = '';
+    updateCounts();
+  };
+  $('randomFill').onclick = () => {
+    const total = state.selected.size + getCustomLines().length;
+    const need = state.targetCount - total;
+    if (need <= 0) { toast('已經達到或超過目標張數了'); return; }
+    const pool = [];
+    Object.values(PHRASES).forEach(cat => cat.items.forEach(i => {
+      if (!state.selected.has(i.text)) pool.push(i.text);
+    }));
+    shuffle(pool);
+    for (let i = 0; i < need && i < pool.length; i++) state.selected.add(pool[i]);
+    document.querySelectorAll('.phrase-chip').forEach(c => {
+      if (state.selected.has(c.dataset.text)) c.classList.add('checked');
+    });
+    updateCounts();
+    toast(`隨機補了 ${Math.min(need, pool.length)} 句`);
+  };
+  $('customText').oninput = updateCounts;
+}
+
+function shuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+}
+
+// ============================================================
+// 生成 Prompt
+// ============================================================
+function buildPrompt({ text, action, isMain, isTab, charDesc }) {
+  const desc = charDesc.trim();
+  const charLine = desc ? `Reference character details: ${desc}.` : '';
+
+  if (isMain) {
+    return [
+      `Generate a LINE sticker MAIN IMAGE based on the attached reference character.`,
+      ``,
+      `Style: Maintain the EXACT same character design, line art, color palette, and proportions as the reference image.`,
+      desc ? charLine : null,
+      ``,
+      `Specifications:`,
+      `- Size: 240x240 pixels (square)`,
+      `- Background: fully transparent PNG`,
+      `- Single character centered`,
+      `- At least 10px padding from all edges`,
+      `- Clear, bold sticker outlines, readable at small thumbnail size`,
+      ``,
+      `Pose: signature welcoming pose representing the entire sticker set, friendly inviting smile, character looking toward viewer.`,
+      ``,
+      `Output: One main cover sticker, transparent background only, no extra text or decorations.`,
+    ].filter(Boolean).join('\n');
+  }
+
+  if (isTab) {
+    return [
+      `Generate a LINE sticker CHAT TAB ICON based on the attached reference character.`,
+      ``,
+      `Style: Same character as reference, simplified for tiny display.`,
+      desc ? charLine : null,
+      ``,
+      `Specifications:`,
+      `- Size: 96x74 pixels`,
+      `- Background: fully transparent PNG`,
+      `- Single small character icon centered`,
+      `- Bold thick outlines, high contrast, recognizable at very small size`,
+      `- Minimal detail, focus on character silhouette and key features`,
+      ``,
+      `Pose: simple front-facing portrait, neutral happy expression.`,
+      ``,
+      `Output: One tiny tab icon, transparent background only, no text.`,
+    ].filter(Boolean).join('\n');
+  }
+
+  return [
+    `Generate a LINE sticker based on the attached reference character.`,
+    ``,
+    `Style: Maintain the EXACT same character design, line art, color palette, and proportions as the reference image.`,
+    desc ? charLine : null,
+    ``,
+    `Specifications:`,
+    `- Size: 370x320 pixels`,
+    `- Background: fully transparent PNG`,
+    `- Single character centered`,
+    `- At least 10px padding from all edges`,
+    `- Bold clear sticker outlines, readable at messaging app size`,
+    ``,
+    `Action / Expression: ${action}.`,
+    ``,
+    `Text: Display the Chinese text "${text}" in a bold, rounded, friendly font. Position the text where it does not block the character's face. Use a thick contrasting outline (white outline with dark fill, or dark outline with bright fill) so the text stays legible at small sizes.`,
+    ``,
+    `Output: One sticker, transparent background only, no watermark, no extra elements.`,
+  ].filter(Boolean).join('\n');
+}
+
+function generate() {
+  if (!state.imageDataUrl) { toast('請先上傳參考圖片'); return; }
+
+  const charDesc = $('charDesc').value;
+  // 收集所有句子（保留原本順序：先勾選的 → 自訂的）
+  const selectedItems = [];
+  Object.values(PHRASES).forEach(cat => cat.items.forEach(i => {
+    if (state.selected.has(i.text)) selectedItems.push({ text: i.text, action: i.action });
+  }));
+  getCustomLines().forEach(t => selectedItems.push({ text: t, action: 'character expressing the meaning of the text naturally, fitting the overall sticker set tone' }));
+
+  if (selectedItems.length === 0) { toast('請至少勾選一句或填寫自訂文字'); return; }
+
+  // 取前 N 個
+  const picked = selectedItems.slice(0, state.targetCount);
+  if (picked.length < state.targetCount) {
+    toast(`目前只有 ${picked.length} 句，少於目標 ${state.targetCount} 句`, 3000);
+  }
+
+  // 建構結果：N 張 + 主圖 + 標籤
+  const results = [];
+  picked.forEach((p, idx) => {
+    results.push({
+      title: `第 ${idx + 1} 張：${p.text}`,
+      subtitle: p.action,
+      prompt: buildPrompt({ text: p.text, action: p.action, charDesc }),
+    });
+  });
+  results.push({
+    title: '🟢 主圖（240×240）— LINE 上架必備',
+    subtitle: 'Main cover image for LINE sticker store',
+    prompt: buildPrompt({ isMain: true, charDesc }),
+  });
+  results.push({
+    title: '🔵 聊天標籤（96×74）— LINE 上架必備',
+    subtitle: 'Chat tab icon shown in messaging app',
+    prompt: buildPrompt({ isTab: true, charDesc }),
+  });
+
+  renderResults(results);
+}
+
+function renderResults(results) {
+  const sec = $('resultsSection');
+  const box = $('results');
+  box.innerHTML = '';
+  results.forEach((r, i) => {
+    const card = document.createElement('div');
+    card.className = 'result-card';
+    card.innerHTML = `
+      <div class="flex justify-between items-start gap-2 mb-2">
+        <div>
+          <div class="font-bold text-gray-800">${r.title}</div>
+          <div class="text-xs text-gray-500">${r.subtitle}</div>
+        </div>
+        <button class="copy-btn px-3 py-1 bg-blue-500 text-white rounded-lg hover:bg-blue-600 text-xs font-semibold flex-shrink-0" data-idx="${i}">📋 複製</button>
+      </div>
+      <details>
+        <summary class="text-xs text-blue-600 hover:underline mb-2">展開 / 收合 prompt</summary>
+        <pre class="bg-white p-3 rounded-lg border border-gray-200 mt-2">${escapeHtml(r.prompt)}</pre>
+      </details>
+    `;
+    card.querySelector('.copy-btn').onclick = () => {
+      navigator.clipboard.writeText(r.prompt).then(() => toast('已複製這張的 prompt'));
+    };
+    box.appendChild(card);
+  });
+  sec.classList.remove('hidden');
+  sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+  // 全部複製
+  $('copyAll').onclick = () => {
+    const all = results.map(r => `=== ${r.title} ===\n${r.prompt}`).join('\n\n\n');
+    navigator.clipboard.writeText(all).then(() => toast('已複製全部 ' + results.length + ' 段'));
+  };
+  // 下載
+  $('downloadAll').onclick = () => {
+    const all = results.map(r => `=== ${r.title} ===\n${r.prompt}`).join('\n\n\n');
+    const blob = new Blob([all], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `line-sticker-prompts-${Date.now()}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast('已下載 .txt 檔');
+  };
+}
+
+function escapeHtml(s) {
+  return s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+}
+
+// ============================================================
+// Toast
+// ============================================================
+let toastTimer;
+function toast(msg, dur = 1800) {
+  const t = $('toast');
+  t.textContent = msg;
+  t.style.opacity = '1';
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.style.opacity = '0', dur);
+}
+
+// ============================================================
+// 啟動
+// ============================================================
+buildTabs();
+setupUpload();
+setupCountBtns();
+setupCatBtns();
+setupGlobalBtns();
+$('generate').onclick = generate;
+updateCounts();
+</script>
+</body>
+</html>
