@@ -1697,10 +1697,21 @@ function setupSplitter() {
         const idx = r * cols + c + 1;
         const x = xCuts[c], y = yCuts[r];
         const w = xCuts[c + 1] - x, h = yCuts[r + 1] - y;
-        // LINE 貼圖規格：寬 ≤370、高 ≤320，必須偶數
-        const scale = Math.min(370 / w, 320 / h, 1);
+        // LINE 貼圖規格：寬 80-370、高 80-320、必須偶數
+        let scale = Math.min(370 / w, 320 / h, 1);
         let dstW = Math.round(w * scale);
         let dstH = Math.round(h * scale);
+        // 任一邊不到 80 → 放大到 80
+        if (dstW < 80 || dstH < 80) {
+          const up = Math.max(80 / dstW, 80 / dstH);
+          dstW = Math.round(dstW * up);
+          dstH = Math.round(dstH * up);
+          // 再 cap 一次防止放大後超過上限
+          const cap = Math.min(370 / dstW, 320 / dstH, 1);
+          dstW = Math.round(dstW * cap);
+          dstH = Math.round(dstH * cap);
+        }
+        // 強制偶數
         if (dstW % 2) dstW--;
         if (dstH % 2) dstH--;
         const canvas = document.createElement('canvas');
