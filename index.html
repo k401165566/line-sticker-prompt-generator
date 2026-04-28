@@ -133,6 +133,17 @@
   .mode-card.active { border-color: #059669; background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%); }
   .split-cell { position: relative; border: 1px solid #e5e7eb; border-radius: 0.5rem; overflow: hidden; background: #f9fafb; }
   .split-cell img { display: block; width: 100%; height: auto; }
+  /* 去背開啟時：用棋盤格背景顯示透明區域（跟 Photoshop / Figma 一樣的視覺） */
+  #splitGrid.show-transparency .split-cell {
+    background-color: #ffffff;
+    background-image:
+      linear-gradient(45deg, #d1d5db 25%, transparent 25%),
+      linear-gradient(-45deg, #d1d5db 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, #d1d5db 75%),
+      linear-gradient(-45deg, transparent 75%, #d1d5db 75%);
+    background-size: 16px 16px;
+    background-position: 0 0, 0 8px, 8px -8px, -8px 0px;
+  }
   .split-cell .cell-num { position: absolute; top: 0.25rem; left: 0.25rem; background: rgba(0,0,0,0.6); color: white; font-size: 0.7rem; padding: 0.1rem 0.4rem; border-radius: 0.25rem; }
   .split-cell .cell-dl { position: absolute; top: 0.25rem; right: 0.25rem; background: #10b981; color: white; font-size: 0.7rem; padding: 0.2rem 0.5rem; border-radius: 0.25rem; cursor: pointer; opacity: 0.9; }
   .split-cell .cell-dl:hover { opacity: 1; }
@@ -992,20 +1003,28 @@
       <div class="bg-emerald-50 border border-emerald-200 rounded-lg p-3 mb-3">
         <label class="flex items-center gap-2 cursor-pointer select-none">
           <input type="checkbox" id="bgRemoveToggle" class="w-4 h-4 accent-emerald-500">
-          <span class="text-sm font-bold text-emerald-800">✨ 自動去背（移除白底/單色背景，輸出真正透明 PNG）</span>
+          <span class="text-sm font-bold text-emerald-800">✨ 自動去背（白底變透明 PNG）</span>
         </label>
-        <div id="bgRemoveOpts" class="hidden mt-2 pl-6 space-y-2">
-          <label class="flex items-center gap-2 text-xs text-gray-700">
-            <span class="w-20">容忍度</span>
-            <input type="range" min="10" max="100" value="36" id="bgTolerance" class="flex-1">
-            <span id="bgToleranceVal" class="w-10 text-right font-mono">36</span>
-          </label>
-          <label class="flex items-center gap-2 text-xs text-gray-700">
-            <span class="w-20">邊緣羽化</span>
-            <input type="range" min="0" max="3" value="1" id="bgFeather" class="flex-1">
-            <span id="bgFeatherVal" class="w-10 text-right font-mono">1px</span>
-          </label>
-          <p class="text-xs text-gray-500">只清除跟邊緣相連的背景色 → 角色內部白色（眼白、牙齒）會保留。背景越乾淨容忍度越低；有陰影或雜色就調高。</p>
+        <div id="bgRemoveOpts" class="hidden mt-2 pl-6">
+          <p class="text-xs text-gray-600 mb-2">
+            ✅ 開啟後，下方 8 張的背景會出現 <span class="inline-block w-3 h-3 align-middle" style="background-image: linear-gradient(45deg, #d1d5db 25%, transparent 25%), linear-gradient(-45deg, #d1d5db 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #d1d5db 75%), linear-gradient(-45deg, transparent 75%, #d1d5db 75%); background-size: 6px 6px; background-position: 0 0, 0 3px, 3px -3px, -3px 0; background-color: #fff; border: 1px solid #ccc;"></span> 灰白棋盤格 = 已透明（下載的 PNG 會是真透明）
+          </p>
+          <details class="mt-1">
+            <summary class="cursor-pointer text-xs text-gray-500 hover:text-gray-700">⚙️ 進階：去得不乾淨/去太多時微調</summary>
+            <div class="pt-2 space-y-2">
+              <label class="flex items-center gap-2 text-xs text-gray-700">
+                <span class="w-20">容忍度</span>
+                <input type="range" min="10" max="100" value="36" id="bgTolerance" class="flex-1">
+                <span id="bgToleranceVal" class="w-10 text-right font-mono">36</span>
+              </label>
+              <label class="flex items-center gap-2 text-xs text-gray-700">
+                <span class="w-20">邊緣羽化</span>
+                <input type="range" min="0" max="3" value="1" id="bgFeather" class="flex-1">
+                <span id="bgFeatherVal" class="w-10 text-right font-mono">1px</span>
+              </label>
+              <p class="text-xs text-gray-500">背景還有殘留 → 容忍度調高；連貼圖內容也被吃掉 → 容忍度調低。只清除跟邊緣相連的背景，角色內部白色（眼白、牙齒）會保留。</p>
+            </div>
+          </details>
         </div>
       </div>
 
@@ -2555,6 +2574,7 @@ function setupSplitter() {
   if (bgToggle) {
     bgToggle.onchange = () => {
       bgOpts.classList.toggle('hidden', !bgToggle.checked);
+      $('splitGrid').classList.toggle('show-transparency', bgToggle.checked);
       if (lastImg) triggerResplit();
     };
   }
