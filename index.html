@@ -2107,6 +2107,20 @@ function photoSetBlock(photos) {
   ].join('\n');
 }
 
+// Strong transparency directive — GPT-image often fakes transparency by painting
+// a white fill or a drawn checker pattern. We explicitly forbid both, name common
+// failure modes, and demand a real alpha channel.
+function transparencyBlock() {
+  return [
+    `🚨 BACKGROUND TRANSPARENCY (NON-NEGOTIABLE — read carefully):`,
+    `- The output MUST be a PNG with a REAL alpha channel. Every pixel that is NOT part of a sticker subject / its outline / its text / its tiny decorations MUST have alpha = 0 (fully see-through).`,
+    `- ❌ FORBIDDEN BACKGROUNDS: white #FFFFFF fill, off-white, cream, beige, pastel tint, any solid color rectangle, paper texture, paper grain, notebook lines, vignette, sky gradient, scene, room, floor, ground shadow, large outer drop shadow extending > 4px from the subject.`,
+    `- ❌ FORBIDDEN FAKE-TRANSPARENCY TRICKS: do NOT paint a gray/white checkered grid to imitate transparency. Do NOT paint dots, hatching, or any pattern in the background. The background must be ACTUALLY EMPTY (alpha = 0), not a painted illusion of emptiness.`,
+    `- ✅ CORRECT: when this PNG is dropped onto a colored chat bubble or photo, the colored chat bubble shows through everywhere except the sticker shape.`,
+    `- ✗ WRONG: a sticker drawn on top of a white square. If the saved PNG looks like a white business card on a dark background, transparency has FAILED — regenerate with true alpha.`,
+  ].join('\n');
+}
+
 function buildBatchPrompt({ phrases, photos, charDesc, styleId, batchIndex, batchTotal }) {
   const desc = charDesc.trim();
   const charLine = desc ? `Subject details: ${desc}.` : null;
@@ -2148,6 +2162,8 @@ function buildBatchPrompt({ phrases, photos, charDesc, styleId, batchIndex, batc
     `- The transparent gutter MUST be 100% alpha-zero — NO faint background tint, NO paper texture, NO line work, NO decorations, NO drop shadows, NO sparkles spilling into the gutter zone.`,
     `- Each sticker stays well inside its cell with ≥15px additional internal padding away from the gutter. Stickers do NOT touch or overlap cell boundaries. Decorations, outlines, and shadows for one sticker must NOT extend into a neighboring cell.`,
     `- Background everywhere outside the stickers (gutters, page edges): FULLY TRANSPARENT (alpha PNG). No visible borders, gridlines, frames, numbering, or watermarks.`,
+    ``,
+    transparencyBlock(),
     ``,
     styleBlock(styleId),
     charLine,
@@ -2195,9 +2211,10 @@ function buildPrompt({ text, action, isMain, isTab, charDesc, styleId, photos })
       ``,
       `Specifications:`,
       `- Size: 240x240 pixels (square)`,
-      `- Background: FULLY TRANSPARENT PNG`,
       `- Subject centered, ≥10px padding from all edges`,
       `- Bold clear outlines, readable at thumbnail size`,
+      ``,
+      transparencyBlock(),
       ``,
       mainPose,
       ``,
@@ -2220,10 +2237,11 @@ function buildPrompt({ text, action, isMain, isTab, charDesc, styleId, photos })
       ``,
       `Specifications:`,
       `- Size: 96x74 pixels`,
-      `- Background: FULLY TRANSPARENT PNG`,
       `- Single tiny icon centered`,
       `- Bold thick outline, high contrast, recognizable at very small size`,
       `- Minimal detail, focus on silhouette and key features`,
+      ``,
+      transparencyBlock(),
       ``,
       tabPose,
       ``,
@@ -2249,10 +2267,11 @@ function buildPrompt({ text, action, isMain, isTab, charDesc, styleId, photos })
     ``,
     `Specifications:`,
     `- Size: 370x320 pixels`,
-    `- Background: FULLY TRANSPARENT PNG`,
     `- Subject prominent and centered, ≥10px padding from all edges`,
     `- Bold clear outlines, readable at messaging-app size`,
     `- No watermark, no extra borders`,
+    ``,
+    transparencyBlock(),
     ``,
     `Mood / Action: ${action}.`,
     compositionLine,
