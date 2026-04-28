@@ -988,6 +988,27 @@
         </div>
       </div>
 
+      <!-- 自動去背選項 -->
+      <div class="bg-emerald-50 border border-emerald-200 rounded-lg p-3 mb-3">
+        <label class="flex items-center gap-2 cursor-pointer select-none">
+          <input type="checkbox" id="bgRemoveToggle" class="w-4 h-4 accent-emerald-500">
+          <span class="text-sm font-bold text-emerald-800">✨ 自動去背（移除白底/單色背景，輸出真正透明 PNG）</span>
+        </label>
+        <div id="bgRemoveOpts" class="hidden mt-2 pl-6 space-y-2">
+          <label class="flex items-center gap-2 text-xs text-gray-700">
+            <span class="w-20">容忍度</span>
+            <input type="range" min="10" max="100" value="36" id="bgTolerance" class="flex-1">
+            <span id="bgToleranceVal" class="w-10 text-right font-mono">36</span>
+          </label>
+          <label class="flex items-center gap-2 text-xs text-gray-700">
+            <span class="w-20">邊緣羽化</span>
+            <input type="range" min="0" max="3" value="1" id="bgFeather" class="flex-1">
+            <span id="bgFeatherVal" class="w-10 text-right font-mono">1px</span>
+          </label>
+          <p class="text-xs text-gray-500">只清除跟邊緣相連的背景色 → 角色內部白色（眼白、牙齒）會保留。背景越乾淨容忍度越低；有陰影或雜色就調高。</p>
+        </div>
+      </div>
+
       <!-- 切好的 8 張 -->
       <div class="flex justify-between items-center mb-2 flex-wrap gap-2 pt-3 border-t">
         <span class="text-sm font-medium text-gray-700">切好的 8 張（點縮圖下載單張）</span>
@@ -2524,6 +2545,32 @@ function setupSplitter() {
     splitInto4x2(lastImg, 'smart');
   };
 
+  // 去背開關 + 參數
+  const bgToggle = $('bgRemoveToggle');
+  const bgOpts = $('bgRemoveOpts');
+  const bgTol = $('bgTolerance');
+  const bgTolVal = $('bgToleranceVal');
+  const bgFeather = $('bgFeather');
+  const bgFeatherVal = $('bgFeatherVal');
+  if (bgToggle) {
+    bgToggle.onchange = () => {
+      bgOpts.classList.toggle('hidden', !bgToggle.checked);
+      if (lastImg) triggerResplit();
+    };
+  }
+  if (bgTol) {
+    bgTol.oninput = () => {
+      bgTolVal.textContent = bgTol.value;
+      if (bgToggle.checked && lastImg) triggerResplit();
+    };
+  }
+  if (bgFeather) {
+    bgFeather.oninput = () => {
+      bgFeatherVal.textContent = bgFeather.value + 'px';
+      if (bgToggle.checked && lastImg) triggerResplit();
+    };
+  }
+
   // 直接拖紅線（mouse + touch）
   document.querySelectorAll('.cut-line').forEach(line => {
     const isVertical = line.classList.contains('cut-line-v');
@@ -2646,6 +2693,99 @@ function setupSplitter() {
     setPos('cutRow1', 'top');
   }
 
+  // 從邊緣 flood-fill 去背：只清除跟邊緣相連的背景色
+  // 角色內部白色（眼白、牙齒等）會保留
+  function removeEdgeBackground(canvas, tolerance, feather) {
+    const ctx = canvas.getContext('2d');
+    const w = canvas.width, h = canvas.height;
+    const imgData = ctx.getImageData(0, 0, w, h);
+    const d = imgData.data;
+    const n = w * h;
+
+    // 1) 從 4 角各取 5×5 區塊抽樣，估出背景參考色（取中位數避開雜點）
+    const samples = [];
+    const sampleSize = 5;
+    const corners = [[0, 0], [w - sampleSize, 0], [0, h - sampleSize], [w - sampleSize, h - sampleSize]];
+    for (const [cx, cy] of corners) {
+      for (let dy = 0; dy < sampleSize; dy++) {
+        for (let dx = 0; dx < sampleSize; dx++) {
+          const i = ((cy + dy) * w + (cx + dx)) * 4;
+          if (d[i + 3] > 0) samples.push([d[i], d[i + 1], d[i + 2]]);
+        }
+      }
+    }
+    if (samples.length === 0) return;
+    const median = (arr, k) => {
+      const v = arr.map(s => s[k]).sort((a, b) => a - b);
+      return v[Math.floor(v.length / 2)];
+    };
+    const bgR = median(samples, 0), bgG = median(samples, 1), bgB = median(samples, 2);
+
+    // 2) BFS flood-fill：從每個邊緣像素出發，相鄰且色差 < tolerance 的全部標為透明
+    //    用 typed array 當 visited mask + 一維 queue (index 為單一數字 = y*w+x)
+    const visited = new Uint8Array(n);
+    const queue = new Int32Array(n);
+    let qHead = 0, qTail = 0;
+    const tol2 = tolerance * tolerance;
+
+    const colorMatch = (i) => {
+      const dr = d[i] - bgR, dg = d[i + 1] - bgG, db = d[i + 2] - bgB;
+      return (dr * dr + dg * dg + db * db) <= tol2;
+    };
+
+    const seed = (px, py) => {
+      const idx = py * w + px;
+      if (visited[idx]) return;
+      const i = idx * 4;
+      if (!colorMatch(i)) return;
+      visited[idx] = 1;
+      queue[qTail++] = idx;
+    };
+
+    for (let x = 0; x < w; x++) { seed(x, 0); seed(x, h - 1); }
+    for (let y = 0; y < h; y++) { seed(0, y); seed(w - 1, y); }
+
+    while (qHead < qTail) {
+      const idx = queue[qHead++];
+      const i = idx * 4;
+      d[i + 3] = 0; // 透明化
+      const x = idx % w, y = (idx - x) / w;
+      // 4-連通鄰居
+      if (x > 0)     { const ni = idx - 1; if (!visited[ni] && colorMatch(ni * 4)) { visited[ni] = 1; queue[qTail++] = ni; } }
+      if (x < w - 1) { const ni = idx + 1; if (!visited[ni] && colorMatch(ni * 4)) { visited[ni] = 1; queue[qTail++] = ni; } }
+      if (y > 0)     { const ni = idx - w; if (!visited[ni] && colorMatch(ni * 4)) { visited[ni] = 1; queue[qTail++] = ni; } }
+      if (y < h - 1) { const ni = idx + w; if (!visited[ni] && colorMatch(ni * 4)) { visited[ni] = 1; queue[qTail++] = ni; } }
+    }
+
+    // 3) 邊緣羽化（每一輪把「鄰居有透明 + 自己色差 < 1.5×tol」的像素 alpha 減半）
+    if (feather > 0) {
+      const tol2Soft = (tolerance * 1.5) * (tolerance * 1.5);
+      for (let pass = 0; pass < feather; pass++) {
+        const snapshot = new Uint8ClampedArray(d); // 拷貝這一輪起始狀態，避免污染
+        for (let y = 0; y < h; y++) {
+          for (let x = 0; x < w; x++) {
+            const idx = y * w + x;
+            const i = idx * 4;
+            if (snapshot[i + 3] === 0) continue;
+            // 鄰居有透明嗎？
+            let hasTrans = false;
+            if (x > 0     && snapshot[(idx - 1) * 4 + 3] === 0) hasTrans = true;
+            else if (x < w - 1 && snapshot[(idx + 1) * 4 + 3] === 0) hasTrans = true;
+            else if (y > 0     && snapshot[(idx - w) * 4 + 3] === 0) hasTrans = true;
+            else if (y < h - 1 && snapshot[(idx + w) * 4 + 3] === 0) hasTrans = true;
+            if (!hasTrans) continue;
+            const dr = d[i] - bgR, dg = d[i + 1] - bgG, db = d[i + 2] - bgB;
+            if ((dr * dr + dg * dg + db * db) <= tol2Soft) {
+              d[i + 3] = Math.round(d[i + 3] * 0.4);
+            }
+          }
+        }
+      }
+    }
+
+    ctx.putImageData(imgData, 0, 0);
+  }
+
   function splitInto4x2(img, mode) {
     lastImg = img;
     // 把原圖放進 cutCanvas 當底圖
@@ -2737,6 +2877,13 @@ function setupSplitter() {
         const ctx = canvas.getContext('2d');
         ctx.imageSmoothingQuality = 'high';
         ctx.drawImage(img, x, y, w, h, 0, 0, dstW, dstH);
+        // 自動去背
+        const bgToggle = $('bgRemoveToggle');
+        if (bgToggle && bgToggle.checked) {
+          const tol = parseInt($('bgTolerance').value, 10) || 36;
+          const feather = parseInt($('bgFeather').value, 10) || 0;
+          removeEdgeBackground(canvas, tol, feather);
+        }
         const dataUrl = canvas.toDataURL('image/png');
         cells.push({ idx, dataUrl, canvas });
 
